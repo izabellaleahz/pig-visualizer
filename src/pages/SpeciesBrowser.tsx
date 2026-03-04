@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useSpecies, useStatistics, useSpeciesProteins } from '../hooks/useData';
 import Loading from '../components/Loading';
+import type { ProteinSummary } from '../types';
 
 type SortKey = 'name' | 'tileCount' | 'uniqueTiles' | 'divergentTiles' | 'length';
 type SortOrder = 'asc' | 'desc';
@@ -235,19 +237,60 @@ export default function SpeciesBrowser() {
         ))}
       </div>
 
-      {/* Protein list */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden max-h-[70vh] overflow-y-auto">
-        {filteredProteins.length === 0 ? (
-          <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-            No proteins match your filter
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {filteredProteins.map(protein => (
+      {/* Protein list (virtualized for 62K+ items) */}
+      <VirtualProteinList proteins={filteredProteins} />
+    </div>
+  );
+}
+
+function VirtualProteinList({ proteins }: { proteins: ProteinSummary[] }) {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: proteins.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 72,
+    overscan: 20,
+  });
+
+  if (proteins.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+        No proteins match your filter
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={parentRef}
+      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-auto"
+      style={{ height: 'min(70vh, 800px)' }}
+    >
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        {virtualizer.getVirtualItems().map(virtualRow => {
+          const protein = proteins[virtualRow.index];
+          return (
+            <div
+              key={protein.id}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
               <Link
-                key={protein.id}
                 to={`/protein/${protein.id}`}
-                className="block px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
+                className="block px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors h-full border-b border-gray-100 dark:border-gray-700"
               >
                 <div className="flex items-start gap-4">
                   <div className="flex-1 min-w-0">
@@ -282,9 +325,9 @@ export default function SpeciesBrowser() {
                   </svg>
                 </div>
               </Link>
-            ))}
-          </div>
-        )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
