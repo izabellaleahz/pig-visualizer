@@ -1,0 +1,234 @@
+import type { Species, Protein, ProteinSummary, SearchIndex, LibraryStatistics, SpeciesId } from '../types';
+
+// Handle both development and production paths
+const BASE_URL = (import.meta.env.BASE_URL || '/') + 'data';
+
+// In-memory cache for current session
+const memoryCache: Record<string, unknown> = {};
+
+// IndexedDB for persistent caching across sessions
+const DB_NAME = 'pig-visualizer-cache';
+const DB_VERSION = 1;
+const STORE_NAME = 'json-cache';
+
+let dbPromise: Promise<IDBDatabase> | null = null;
+
+function openDB(): Promise<IDBDatabase> {
+  if (dbPromise) return dbPromise;
+
+  dbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'path' });
+      }
+    };
+  });
+
+  return dbPromise;
+}
+
+async function getFromIndexedDB<T>(path: string): Promise<T | null> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(path);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const result = request.result;
+        if (result) {
+          resolve(result.data as T);
+        } else {
+          resolve(null);
+        }
+      };
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function saveToIndexedDB<T>(path: string, data: T): Promise<void> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put({ path, data, timestamp: Date.now() });
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  } catch {
+    // Ignore IndexedDB errors - fall back to network
+  }
+}
+
+// Chunk index: maps protein ID -> chunk number
+let chunkIndexPromise: Promise<Record<string, number>> | null = null;
+
+function getChunkIndex(): Promise<Record<string, number>> {
+  if (!chunkIndexPromise) {
+    chunkIndexPromise = fetchJson<Record<string, number>>('proteins/pig/chunk-index.json');
+  }
+  return chunkIndexPromise;
+}
+
+// Progress callback type
+export type ProgressCallback = (loaded: number, total: number) => void;
+
+async function fetchJson<T>(path: string, onProgress?: ProgressCallback): Promise<T> {
+  // Check memory cache first (instant)
+  if (memoryCache[path]) {
+    return memoryCache[path] as T;
+  }
+
+  // Check IndexedDB cache (very fast, local)
+  const cached = await getFromIndexedDB<T>(path);
+  if (cached) {
+    memoryCache[path] = cached;
+    return cached;
+  }
+
+  // Normalize path - remove leading slash if present
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+  const url = `${BASE_URL}/${normalizedPath}`.replace(/\/+/g, '/');
+
+  let response: Response;
+  try {
+    response = await fetch(url);
+  } catch (e) {
+    throw new Error(
+      `Network error fetching ${path} from ${url}: ${e instanceof Error ? e.message : String(e)}. ` +
+      `Check that the file exists in public/data/.`
+    );
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(
+      `Failed to fetch ${path} (${response.status} ${response.statusText}) from ${url}. ` +
+      `Response: ${errorText.substring(0, 200)}`
+    );
+  }
+
+  // Stream the response with progress
+  let text: string;
+  if (onProgress && response.body) {
+    const reader = response.body.getReader();
+    const contentLength = parseInt(response.headers.get('Content-Length') || '0', 10);
+    let receivedLength = 0;
+    const chunks: Uint8Array[] = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      chunks.push(value);
+      receivedLength += value.length;
+      onProgress(receivedLength, contentLength || receivedLength * 2);
+    }
+
+    const allChunks = new Uint8Array(receivedLength);
+    let position = 0;
+    for (const chunk of chunks) {
+      allChunks.set(chunk, position);
+      position += chunk.length;
+    }
+
+    text = new TextDecoder('utf-8').decode(allChunks);
+  } else {
+    text = await response.text();
+  }
+
+  try {
+    const data = JSON.parse(text);
+    memoryCache[path] = data;
+
+    // Save to IndexedDB for next visit (don't await - do it in background)
+    saveToIndexedDB(path, data);
+
+    return data as T;
+  } catch (e) {
+    throw new Error(
+      `Failed to parse JSON from ${path}: ${e instanceof Error ? e.message : String(e)}. ` +
+      `First 200 chars: ${text.substring(0, 200)}`
+    );
+  }
+}
+
+export async function fetchSpecies(): Promise<Species[]> {
+  return fetchJson<Species[]>('species.json');
+}
+
+// Fetch protein summaries (without tiles) for listing - uses small summary files
+export async function fetchSpeciesProteins(speciesId: SpeciesId, onProgress?: ProgressCallback): Promise<ProteinSummary[]> {
+  return fetchJson<ProteinSummary[]>(`proteins/${speciesId}-summary.json`, onProgress);
+}
+
+// Fetch full protein details (with tiles) - loads from chunked files
+export async function fetchProteinDetails(speciesId: SpeciesId, proteinId: string): Promise<Protein> {
+  const chunkIndex = await getChunkIndex();
+  const chunkNum = chunkIndex[proteinId];
+
+  if (chunkNum === undefined) {
+    throw new Error(`Protein ${proteinId} not found in chunk index`);
+  }
+
+  const chunkPath = `proteins/${speciesId}/chunk-${String(chunkNum).padStart(4, '0')}.json`;
+  const chunkData = await fetchJson<Record<string, Protein>>(chunkPath);
+  const protein = chunkData[proteinId];
+
+  if (!protein) {
+    throw new Error(`Protein ${proteinId} not found in chunk ${chunkNum}`);
+  }
+
+  return protein;
+}
+
+export async function fetchProteinLookup(): Promise<Record<string, SpeciesId>> {
+  return fetchJson<Record<string, SpeciesId>>('proteins/lookup.json');
+}
+
+export async function fetchSearchIndex(): Promise<SearchIndex> {
+  return fetchJson<SearchIndex>('search-index.json');
+}
+
+export async function fetchStatistics(): Promise<LibraryStatistics> {
+  return fetchJson<LibraryStatistics>('statistics.json');
+}
+
+// Helper to find a protein by ID - now loads individual protein file
+export async function findProteinById(proteinId: string): Promise<{ protein: Protein; speciesId: SpeciesId } | null> {
+  const lookup = await fetchProteinLookup();
+  const speciesId = lookup[proteinId];
+
+  if (!speciesId) {
+    return null;
+  }
+
+  try {
+    const protein = await fetchProteinDetails(speciesId, proteinId);
+    return { protein, speciesId };
+  } catch (e) {
+    console.error(`Failed to load protein ${proteinId}:`, e);
+    return null;
+  }
+}
+
+// Preload data in background (call on app startup)
+export function preloadData(): void {
+  // Preload the pig summary in background
+  fetchSpeciesProteins('pig').catch(() => {});
+  fetchProteinLookup().catch(() => {});
+  fetchSearchIndex().catch(() => {});
+  getChunkIndex().catch(() => {});
+}

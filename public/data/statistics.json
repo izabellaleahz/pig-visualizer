@@ -1,0 +1,102 @@
+{
+  "library_summary": {
+    "total_sequences": 1082652,
+    "total_pig_tiles": 661375,
+    "total_human_tiles": 421277,
+    "unique_tiles": 218269,
+    "unique_with_homolog_tiles": 2,
+    "divergent_tiles": 72480,
+    "similar_tiles": 370029,
+    "sla_tiles": 595,
+    "human_ortholog_tiles": 379204,
+    "hla_tiles": 42073,
+    "excluded_identical": 0,
+    "pig_proteins": 62375,
+    "human_proteins": 421277
+  },
+  "identity_stats": {},
+  "coverage": {
+    "proteins_with_full_coverage": 31041,
+    "proteins_with_partial_coverage": 31334,
+    "mean_coverage_pct": 85.9
+  },
+  "mhc": {
+    "sla": {
+      "raw_alleles_fetched": 200,
+      "parsed_alleles": 184,
+      "unique_proteins": 172,
+      "total_tiles": 1265,
+      "tiles_with_hla_pair": 1255,
+      "mean_hla_identity": 0.7244,
+      "class_distribution": {
+        "I": 284,
+        "II": 981
+      },
+      "gene_distribution": {
+        "SLA-1": 284,
+        "SLA-DMA": 33,
+        "SLA-DQA": 182,
+        "SLA-DQB1": 269,
+        "SLA-DRA": 50,
+        "SLA-DRB1": 435,
+        "SLA-DRB2": 2,
+        "SLA-DRB5": 10
+      }
+    },
+    "hla": {
+      "total_alleles_loaded": 41522,
+      "unique_proteins": 26154,
+      "total_tiles": 276445,
+      "locus_distribution": {
+        "A": 67009,
+        "B": 81920,
+        "C": 64690,
+        "DMA": 110,
+        "DMB": 84,
+        "DOA": 189,
+        "DOB": 220,
+        "DPA1": 4006,
+        "DPB1": 13812,
+        "DQA1": 4606,
+        "DQB1": 14321,
+        "DRA": 209,
+        "DRB1": 16296,
+        "DRB3": 3073,
+        "DRB4": 1358,
+        "DRB5": 1205,
+        "E": 2037,
+        "F": 420,
+        "G": 880
+      }
+    },
+    "pairing": {
+      "ortholog_map": {
+        "SLA-1": "A",
+        "SLA-2": "B",
+        "SLA-3": "C",
+        "SLA-DRA": "DRA",
+        "SLA-DRB1": "DRB1",
+        "SLA-DRB2": "DRB3",
+        "SLA-DRB3": "DRB4",
+        "SLA-DRB4": "DRB5",
+        "SLA-DQA": "DQA1",
+        "SLA-DQB1": "DQB1",
+        "SLA-DMA": "DMA",
+        "SLA-DMB": "DMB",
+        "SLA-DOA": "DOA",
+        "SLA-DOB": "DOB"
+      },
+      "sla_tiles_paired": 1255,
+      "sla_tiles_unpaired": 10,
+      "mean_identity": 0.7244
+    }
+  },
+  "generation_info": {
+    "pipeline": "Pig Rejection PhIP-seq Library (Alignment-based + MHC)",
+    "tile_length": 49,
+    "tile_overlap": 25,
+    "clustering_threshold": 0.8,
+    "pig_only_collapse_threshold": 0.95,
+    "method": "CD-HIT clustering \u2192 MAFFT alignment \u2192 identity pairing + SLA/HLA MHC tiling"
+  }
+}
