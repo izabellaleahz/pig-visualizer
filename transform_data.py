@@ -345,34 +345,88 @@ def transform_data():
         ],
     }
 
-    # Write output files
-    print("\nWriting output files...")
+    # Write output files (compact format to reduce size for GitHub Pages)
+    # The frontend api.ts decodes compact keys back to full TypeScript types
+    print("\nWriting output files (compact format)...")
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUTPUT_DIR / "proteins").mkdir(exist_ok=True)
     (OUTPUT_DIR / "proteins" / "pig").mkdir(exist_ok=True)
+
+    # Category short codes for compact tile arrays
+    CAT_SHORT = {
+        "unique": "u",
+        "unique_with_homolog": "uh",
+        "divergent": "d",
+        "similar": "s",
+        "sla": "sla",
+        "hla": "hla",
+        "human_ortholog": "ho",
+    }
+
+    def compact_protein(p):
+        """Convert protein to compact format with short keys and array tiles.
+
+        Compact tile format: [start, end, category_code, seq, ?matches]
+        where matches = [[proteinId, name, identity], ...]
+        Fields like ncbiLink/uniprotLink are constructed client-side from the ID.
+        """
+        compact_tiles = []
+        for t in p.get("tiles", []):
+            cat = CAT_SHORT.get(t["category"], t["category"])
+            entry = [t["start"], t["end"], cat, t["seq"]]
+            if t.get("humanMatches"):
+                matches = [
+                    [m["proteinId"], m.get("name", ""), round(m["identity"], 4)]
+                    for m in t["humanMatches"]
+                ]
+                entry.append(matches)
+            compact_tiles.append(entry)
+
+        return {
+            "n": p.get("nameClean", p.get("name", "")),
+            "l": p["length"],
+            "tc": p["tileCount"],
+            "ut": p["uniqueTiles"],
+            "uwh": p.get("uniqueWithHomologTiles", 0),
+            "dt": p["divergentTiles"],
+            "st": p["similarTiles"],
+            "sla": p.get("slaTiles", 0),
+            "cp": p["coveragePct"],
+            "t": compact_tiles,
+        }
+
+    def compact_summary(p):
+        """Convert protein to compact summary format (no tiles)."""
+        return {
+            "i": p["id"],
+            "n": p.get("nameClean", p.get("name", "")),
+            "l": p["length"],
+            "tc": p["tileCount"],
+            "ut": p["uniqueTiles"],
+            "uwh": p.get("uniqueWithHomologTiles", 0),
+            "dt": p["divergentTiles"],
+            "st": p["similarTiles"],
+            "sla": p.get("slaTiles", 0),
+            "cp": p["coveragePct"],
+        }
 
     # Species summary
     with open(OUTPUT_DIR / "species.json", "w") as f:
         json.dump(species_data, f, indent=2)
     print(f"  species.json ({len(species_data)} species)")
 
-    # Pig proteins summary (minimal data for fast loading in browser list view)
-    pig_summary = []
-    summary_fields = ['id', 'name', 'nameClean', 'length', 'tileCount',
-                      'uniqueTiles', 'divergentTiles', 'similarTiles', 'slaTiles',
-                      'coveragePct']
-    for p in pig_proteins:
-        summary = {k: p[k] for k in summary_fields if k in p}
-        pig_summary.append(summary)
+    # Pig proteins summary (compact format for fast loading)
+    pig_summary = [compact_summary(p) for p in pig_proteins]
     with open(OUTPUT_DIR / "proteins" / "pig-summary.json", "w") as f:
-        json.dump(pig_summary, f, separators=(',', ':'))  # Minified JSON
-    print(f"  proteins/pig-summary.json ({len(pig_summary):,} proteins)")
+        json.dump(pig_summary, f, separators=(',', ':'))
+    summary_size = (OUTPUT_DIR / "proteins" / "pig-summary.json").stat().st_size
+    print(f"  proteins/pig-summary.json ({len(pig_summary):,} proteins, {summary_size/1024/1024:.1f} MB)")
 
-    # Chunked protein files (for detail view)
-    # Instead of 62K individual files, write ~625 chunk files with 100 proteins each
+    # Chunked protein files (compact format for detail view)
     CHUNK_SIZE = 100
     num_chunks = math.ceil(len(pig_proteins) / CHUNK_SIZE)
     chunk_index = {}  # protein_id -> chunk number
+    total_chunk_bytes = 0
 
     print(f"  Writing {num_chunks:,} chunk files ({CHUNK_SIZE} proteins each)...")
     for chunk_num in range(num_chunks):
@@ -380,20 +434,21 @@ def transform_data():
         end = min(start + CHUNK_SIZE, len(pig_proteins))
         chunk_proteins = pig_proteins[start:end]
 
-        # Build chunk as {proteinId: proteinData, ...} for O(1) lookup
         chunk_dict = {}
         for protein in chunk_proteins:
-            chunk_dict[protein["id"]] = protein
+            chunk_dict[protein["id"]] = compact_protein(protein)
             chunk_index[protein["id"]] = chunk_num
 
-        with open(OUTPUT_DIR / "proteins" / "pig" / f"chunk-{chunk_num:04d}.json", "w") as f:
+        chunk_path = OUTPUT_DIR / "proteins" / "pig" / f"chunk-{chunk_num:04d}.json"
+        with open(chunk_path, "w") as f:
             json.dump(chunk_dict, f, separators=(',', ':'))
+        total_chunk_bytes += chunk_path.stat().st_size
 
     # Chunk index: maps protein ID -> chunk number
     with open(OUTPUT_DIR / "proteins" / "pig" / "chunk-index.json", "w") as f:
         json.dump(chunk_index, f, separators=(',', ':'))
     print(f"  proteins/pig/chunk-index.json ({len(chunk_index):,} mappings)")
-    print(f"  proteins/pig/chunk-*.json ({num_chunks:,} chunks)")
+    print(f"  proteins/pig/chunk-*.json ({num_chunks:,} chunks, {total_chunk_bytes/1024/1024:.1f} MB)")
 
     # Protein lookup
     protein_lookup = {p["id"]: "pig" for p in pig_proteins}

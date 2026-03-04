@@ -1,7 +1,119 @@
-import type { Species, Protein, ProteinSummary, SearchIndex, LibraryStatistics, SpeciesId } from '../types';
+import type { Species, Protein, ProteinSummary, SearchIndex, LibraryStatistics, SpeciesId, TilePosition, HumanMatch, TileCategory } from '../types';
 
 // Handle both development and production paths
 const BASE_URL = (import.meta.env.BASE_URL || '/') + 'data';
+
+// Decode compact data format (short keys) back to full TypeScript types
+// Category code mapping: compact -> full
+const CAT_MAP: Record<string, TileCategory> = {
+  u: 'unique',
+  uh: 'unique_with_homolog',
+  d: 'divergent',
+  s: 'similar',
+  sla: 'sla',
+  hla: 'hla',
+  ho: 'human_ortholog',
+};
+
+// Decode a compact tile array: [start, end, catCode, seq, ?matches]
+// where matches = [[proteinId, name, identity], ...]
+function decodeTile(arr: unknown[], index: number): TilePosition {
+  const start = arr[0] as number;
+  const end = arr[1] as number;
+  const catCode = arr[2] as string;
+  const seq = arr[3] as string;
+  const rawMatches = arr[4] as [string, string, number][] | undefined;
+
+  const humanMatches: HumanMatch[] = rawMatches
+    ? rawMatches.map(([proteinId, name, identity]) => ({
+        proteinId,
+        name: name || proteinId,
+        tile: '',
+        identity,
+      }))
+    : [];
+
+  return {
+    id: `tile_${index}`,
+    start,
+    end,
+    category: CAT_MAP[catCode] || (catCode as TileCategory),
+    seq,
+    maxIdentity: humanMatches.length > 0 ? Math.max(...humanMatches.map(m => m.identity)) : null,
+    humanMatchCount: humanMatches.length,
+    humanMatches,
+  };
+}
+
+// Decode a compact protein object back to full Protein type
+interface CompactProtein {
+  n: string;
+  l: number;
+  tc: number;
+  ut: number;
+  uwh: number;
+  dt: number;
+  st: number;
+  sla: number;
+  cp: number;
+  t: unknown[][];
+}
+
+function decodeProtein(id: string, c: CompactProtein): Protein {
+  const tiles: TilePosition[] = c.t.map((arr, i) => decodeTile(arr, i));
+  return {
+    id,
+    species: 'pig',
+    name: c.n,
+    nameClean: c.n,
+    length: c.l,
+    tileCount: c.tc,
+    uniqueTiles: c.ut,
+    uniqueWithHomologTiles: c.uwh,
+    divergentTiles: c.dt,
+    similarTiles: c.st,
+    slaTiles: c.sla,
+    coveragePct: c.cp,
+    coverageStart: tiles.length > 0 ? tiles[0].start : 0,
+    coverageEnd: tiles.length > 0 ? tiles[tiles.length - 1].end : 0,
+    ncbiLink: `https://www.ncbi.nlm.nih.gov/protein/${id}`,
+    uniprotLink: `https://www.uniprot.org/uniprotkb?query=${id}`,
+    tiles,
+  };
+}
+
+// Decode a compact summary entry back to ProteinSummary
+interface CompactSummary {
+  i: string;
+  n: string;
+  l: number;
+  tc: number;
+  ut: number;
+  uwh: number;
+  dt: number;
+  st: number;
+  sla: number;
+  cp: number;
+}
+
+function decodeSummary(c: CompactSummary): ProteinSummary {
+  return {
+    id: c.i,
+    species: 'pig',
+    name: c.n,
+    nameClean: c.n,
+    length: c.l,
+    tileCount: c.tc,
+    uniqueTiles: c.ut,
+    uniqueWithHomologTiles: c.uwh,
+    divergentTiles: c.dt,
+    similarTiles: c.st,
+    slaTiles: c.sla,
+    coveragePct: c.cp,
+    coverageStart: 0,
+    coverageEnd: 0,
+  };
+}
 
 // In-memory cache for current session
 const memoryCache: Record<string, unknown> = {};
@@ -171,7 +283,8 @@ export async function fetchSpecies(): Promise<Species[]> {
 
 // Fetch protein summaries (without tiles) for listing - uses small summary files
 export async function fetchSpeciesProteins(speciesId: SpeciesId, onProgress?: ProgressCallback): Promise<ProteinSummary[]> {
-  return fetchJson<ProteinSummary[]>(`proteins/${speciesId}-summary.json`, onProgress);
+  const raw = await fetchJson<CompactSummary[]>(`proteins/${speciesId}-summary.json`, onProgress);
+  return raw.map(decodeSummary);
 }
 
 // Fetch full protein details (with tiles) - loads from chunked files
@@ -184,14 +297,14 @@ export async function fetchProteinDetails(speciesId: SpeciesId, proteinId: strin
   }
 
   const chunkPath = `proteins/${speciesId}/chunk-${String(chunkNum).padStart(4, '0')}.json`;
-  const chunkData = await fetchJson<Record<string, Protein>>(chunkPath);
-  const protein = chunkData[proteinId];
+  const chunkData = await fetchJson<Record<string, CompactProtein>>(chunkPath);
+  const compact = chunkData[proteinId];
 
-  if (!protein) {
+  if (!compact) {
     throw new Error(`Protein ${proteinId} not found in chunk ${chunkNum}`);
   }
 
-  return protein;
+  return decodeProtein(proteinId, compact);
 }
 
 export async function fetchProteinLookup(): Promise<Record<string, SpeciesId>> {
