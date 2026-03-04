@@ -59,21 +59,32 @@ interface CompactProtein {
   t: unknown[][];
 }
 
-function decodeProtein(id: string, c: CompactProtein): Protein {
-  const tiles: TilePosition[] = c.t.map((arr, i) => decodeTile(arr, i));
+function decodeProtein(id: string, c: CompactProtein | Record<string, unknown>): Protein {
+  // Handle legacy format (full keys, cached from old version)
+  if ('tiles' in c && Array.isArray((c as Record<string, unknown>).tiles)) {
+    const legacy = c as unknown as Protein;
+    return {
+      ...legacy,
+      id,
+      ncbiLink: legacy.ncbiLink || `https://www.ncbi.nlm.nih.gov/protein/${id}`,
+      uniprotLink: legacy.uniprotLink || `https://www.uniprot.org/uniprotkb?query=${id}`,
+    };
+  }
+  const compact = c as CompactProtein;
+  const tiles: TilePosition[] = compact.t.map((arr, i) => decodeTile(arr, i));
   return {
     id,
     species: 'pig',
-    name: c.n,
-    nameClean: c.n,
-    length: c.l,
-    tileCount: c.tc,
-    uniqueTiles: c.ut,
-    uniqueWithHomologTiles: c.uwh,
-    divergentTiles: c.dt,
-    similarTiles: c.st,
-    slaTiles: c.sla,
-    coveragePct: c.cp,
+    name: compact.n,
+    nameClean: compact.n,
+    length: compact.l,
+    tileCount: compact.tc,
+    uniqueTiles: compact.ut,
+    uniqueWithHomologTiles: compact.uwh,
+    divergentTiles: compact.dt,
+    similarTiles: compact.st,
+    slaTiles: compact.sla,
+    coveragePct: compact.cp,
     coverageStart: tiles.length > 0 ? tiles[0].start : 0,
     coverageEnd: tiles.length > 0 ? tiles[tiles.length - 1].end : 0,
     ncbiLink: `https://www.ncbi.nlm.nih.gov/protein/${id}`,
@@ -96,20 +107,32 @@ interface CompactSummary {
   cp: number;
 }
 
-function decodeSummary(c: CompactSummary): ProteinSummary {
+function decodeSummary(c: CompactSummary | Record<string, unknown>): ProteinSummary {
+  // Handle both compact format (short keys) and legacy format (full keys)
+  if ('id' in c && typeof (c as Record<string, unknown>).id === 'string') {
+    // Legacy format — return as-is with defaults
+    const legacy = c as unknown as ProteinSummary;
+    return {
+      ...legacy,
+      uniqueWithHomologTiles: legacy.uniqueWithHomologTiles ?? 0,
+      coverageStart: legacy.coverageStart ?? 0,
+      coverageEnd: legacy.coverageEnd ?? 0,
+    };
+  }
+  const compact = c as CompactSummary;
   return {
-    id: c.i,
+    id: compact.i,
     species: 'pig',
-    name: c.n,
-    nameClean: c.n,
-    length: c.l,
-    tileCount: c.tc,
-    uniqueTiles: c.ut,
-    uniqueWithHomologTiles: c.uwh,
-    divergentTiles: c.dt,
-    similarTiles: c.st,
-    slaTiles: c.sla,
-    coveragePct: c.cp,
+    name: compact.n,
+    nameClean: compact.n,
+    length: compact.l,
+    tileCount: compact.tc,
+    uniqueTiles: compact.ut,
+    uniqueWithHomologTiles: compact.uwh,
+    divergentTiles: compact.dt,
+    similarTiles: compact.st,
+    slaTiles: compact.sla,
+    coveragePct: compact.cp,
     coverageStart: 0,
     coverageEnd: 0,
   };
@@ -120,7 +143,7 @@ const memoryCache: Record<string, unknown> = {};
 
 // IndexedDB for persistent caching across sessions
 const DB_NAME = 'pig-visualizer-cache';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bumped to invalidate stale cache from pre-compact format
 const STORE_NAME = 'json-cache';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
