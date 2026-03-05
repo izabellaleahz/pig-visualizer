@@ -119,7 +119,7 @@ export default function SpeciesBrowser() {
           <div className="text-2xl font-bold text-gray-900 dark:text-white">
             {totalProteins.toLocaleString()}
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Pig Proteins</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Pig Genes</div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
           <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">
@@ -298,6 +298,11 @@ function VirtualProteinList({ proteins }: { proteins: ProteinSummary[] }) {
                       <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
                         {protein.nameClean}
                       </span>
+                      {protein.isoformCount > 1 && (
+                        <span className="shrink-0 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs rounded">
+                          {protein.isoformCount} isoforms
+                        </span>
+                      )}
                       {protein.uniqueTiles > 0 && (
                         <span className="shrink-0 px-1.5 py-0.5 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-xs rounded">
                           {protein.uniqueTiles} unique

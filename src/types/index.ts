@@ -34,6 +34,8 @@ export interface Protein {
   coveragePct: number;
   coverageStart: number;
   coverageEnd: number;
+  isoformCount: number;
+  isoformIds: string[];
   ncbiLink?: string;
   uniprotLink?: string;
   tiles?: TilePosition[];

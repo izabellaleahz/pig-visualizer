@@ -2,12 +2,12 @@
   {
     "id": "pig",
     "name": "Pig (Sus scrofa)",
-    "proteinCount": 62375,
-    "tileCount": 1337624,
-    "uniqueTiles": 401583,
+    "proteinCount": 19030,
+    "tileCount": 375418,
+    "uniqueTiles": 127965,
     "uniqueWithHomologTiles": 2,
-    "divergentTiles": 142277,
-    "similarTiles": 793167,
+    "divergentTiles": 40879,
+    "similarTiles": 205977,
     "slaTiles": 595
   }
 ]

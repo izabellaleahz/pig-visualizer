@@ -164,22 +164,49 @@ def transform_data():
 
     print(f"  Found {len(tiles_by_protein):,} unique pig proteins")
 
+    # ---------------------------------------------------------------
+    # Collapse isoforms: group proteins by nameClean, pick longest
+    # as representative. Tiles are already deduplicated at the
+    # sequence level, so we only need to show one isoform's view.
+    # ---------------------------------------------------------------
+    print("\nCollapsing isoforms by gene name...")
+
+    # Group protein IDs by their cleaned name
+    name_to_protein_ids = defaultdict(list)
+    for protein_id in tiles_by_protein:
+        annotation = pig_annotations.get(protein_id, {})
+        name_clean = annotation.get('name_clean', protein_id)
+        name_to_protein_ids[name_clean].append(protein_id)
+
+    # For each gene, pick the longest isoform as representative
+    representative_map = {}  # protein_id → (representative_id, all_isoform_ids)
+    for name_clean, protein_ids in name_to_protein_ids.items():
+        if len(protein_ids) == 1:
+            representative_map[protein_ids[0]] = (protein_ids[0], protein_ids)
+        else:
+            # Pick longest isoform (most tiles = best coverage view)
+            best_id = max(protein_ids, key=lambda pid: (
+                max((t["end"] for t in tiles_by_protein[pid]), default=0)
+            ))
+            for pid in protein_ids:
+                representative_map[pid] = (best_id, protein_ids)
+
+    # Keep only representative proteins
+    representatives = set()
+    for pid, (rep_id, _) in representative_map.items():
+        representatives.add(rep_id)
+
+    collapsed_count = len(tiles_by_protein) - len(representatives)
+    print(f"  {len(tiles_by_protein):,} proteins → {len(representatives):,} genes ({collapsed_count:,} isoforms collapsed)")
+
     # Build protein data
     pig_proteins = []
 
-    # Category colors for visualization
-    category_colors = {
-        "unique": "#dc2626",           # red - no human homolog (best for rejection)
-        "unique_with_homolog": "#f97316",  # orange - has homolog but no alignment
-        "divergent": "#eab308",         # yellow - <80% identity
-        "similar": "#22c55e",           # green - 80-99% identity
-        "sla": "#8b5cf6",              # purple - SLA allele tiles
-        "hla": "#3b82f6",             # blue - HLA allele tiles (human MHC)
-        "human_ortholog": "#06b6d4",   # cyan - human ortholog tiles
-    }
-
     print("\nBuilding protein data...")
-    for protein_id, protein_tiles in tiles_by_protein.items():
+    for protein_id in representatives:
+        protein_tiles = tiles_by_protein[protein_id]
+        _, all_isoform_ids = representative_map[protein_id]
+
         # Determine sequence length from tile positions
         if protein_tiles:
             max_end = max(t["end"] for t in protein_tiles)
@@ -245,17 +272,15 @@ def transform_data():
         description = annotation.get('description', protein_id)
         name_clean = annotation.get('name_clean', protein_id)
 
-        # Build external links
-        # NCBI Protein link
-        ncbi_link = f"https://www.ncbi.nlm.nih.gov/protein/{protein_id}"
-        # UniProt search link (searches by NCBI accession)
-        uniprot_link = f"https://www.uniprot.org/uniprotkb?query={protein_id}"
+        # Isoform info
+        isoform_count = len(all_isoform_ids)
+        other_isoform_ids = sorted([pid for pid in all_isoform_ids if pid != protein_id])
 
         protein_data = {
             "id": protein_id,
             "species": "pig",
-            "name": description,  # Full description with isoform info
-            "nameClean": name_clean,  # Cleaned name without isoform
+            "name": description,
+            "nameClean": name_clean,
             "length": length,
             "tileCount": len(protein_tiles),
             "uniqueTiles": category_counts.get("unique", 0),
@@ -266,8 +291,8 @@ def transform_data():
             "coveragePct": min(100.0, coverage_pct),
             "coverageStart": coverage_start,
             "coverageEnd": coverage_end,
-            "ncbiLink": ncbi_link,
-            "uniprotLink": uniprot_link,
+            "isoformCount": isoform_count,
+            "isoformIds": other_isoform_ids,
             "tiles": tile_positions,
         }
 
@@ -276,7 +301,7 @@ def transform_data():
     # Sort proteins by unique tile count (most interesting first)
     pig_proteins.sort(key=lambda p: (p["uniqueTiles"] + p["divergentTiles"]), reverse=True)
 
-    print(f"  Pig proteins: {len(pig_proteins):,}")
+    print(f"  Pig proteins (genes): {len(pig_proteins):,}")
 
     # Build species summary
     species_data = [
@@ -382,7 +407,7 @@ def transform_data():
                 entry.append(matches)
             compact_tiles.append(entry)
 
-        return {
+        result = {
             "n": p.get("nameClean", p.get("name", "")),
             "l": p["length"],
             "tc": p["tileCount"],
@@ -394,10 +419,14 @@ def transform_data():
             "cp": p["coveragePct"],
             "t": compact_tiles,
         }
+        if p.get("isoformCount", 1) > 1:
+            result["ic"] = p["isoformCount"]
+            result["iids"] = p["isoformIds"]
+        return result
 
     def compact_summary(p):
         """Convert protein to compact summary format (no tiles)."""
-        return {
+        result = {
             "i": p["id"],
             "n": p.get("nameClean", p.get("name", "")),
             "l": p["length"],
@@ -409,6 +438,9 @@ def transform_data():
             "sla": p.get("slaTiles", 0),
             "cp": p["coveragePct"],
         }
+        if p.get("isoformCount", 1) > 1:
+            result["ic"] = p["isoformCount"]
+        return result
 
     # Species summary
     with open(OUTPUT_DIR / "species.json", "w") as f:
@@ -450,11 +482,25 @@ def transform_data():
     print(f"  proteins/pig/chunk-index.json ({len(chunk_index):,} mappings)")
     print(f"  proteins/pig/chunk-*.json ({num_chunks:,} chunks, {total_chunk_bytes/1024/1024:.1f} MB)")
 
-    # Protein lookup
+    # Protein lookup — include isoform IDs pointing to their representative
     protein_lookup = {p["id"]: "pig" for p in pig_proteins}
+    # Map each isoform ID to "pig" so URL lookups for any isoform still work
+    for p in pig_proteins:
+        for isoform_id in p.get("isoformIds", []):
+            protein_lookup[isoform_id] = "pig"
     with open(OUTPUT_DIR / "proteins" / "lookup.json", "w") as f:
         json.dump(protein_lookup, f)
     print(f"  proteins/lookup.json ({len(protein_lookup):,} mappings)")
+
+    # Isoform redirect map: isoform_id → representative_id
+    isoform_redirect = {}
+    for p in pig_proteins:
+        for isoform_id in p.get("isoformIds", []):
+            isoform_redirect[isoform_id] = p["id"]
+    if isoform_redirect:
+        with open(OUTPUT_DIR / "proteins" / "isoform-redirect.json", "w") as f:
+            json.dump(isoform_redirect, f, separators=(',', ':'))
+        print(f"  proteins/isoform-redirect.json ({len(isoform_redirect):,} redirects)")
 
     # Statistics
     with open(OUTPUT_DIR / "statistics.json", "w") as f:

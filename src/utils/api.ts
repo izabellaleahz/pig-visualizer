@@ -57,6 +57,8 @@ interface CompactProtein {
   sla: number;
   cp: number;
   t: unknown[][];
+  ic?: number;    // isoformCount (only present if > 1)
+  iids?: string[]; // other isoform IDs
 }
 
 function decodeProtein(id: string, c: CompactProtein | Record<string, unknown>): Protein {
@@ -66,6 +68,8 @@ function decodeProtein(id: string, c: CompactProtein | Record<string, unknown>):
     return {
       ...legacy,
       id,
+      isoformCount: legacy.isoformCount ?? 1,
+      isoformIds: legacy.isoformIds ?? [],
       ncbiLink: legacy.ncbiLink || `https://www.ncbi.nlm.nih.gov/protein/${id}`,
       uniprotLink: legacy.uniprotLink || `https://www.uniprot.org/uniprotkb?query=${id}`,
     };
@@ -87,6 +91,8 @@ function decodeProtein(id: string, c: CompactProtein | Record<string, unknown>):
     coveragePct: compact.cp,
     coverageStart: tiles.length > 0 ? tiles[0].start : 0,
     coverageEnd: tiles.length > 0 ? tiles[tiles.length - 1].end : 0,
+    isoformCount: compact.ic ?? 1,
+    isoformIds: compact.iids ?? [],
     ncbiLink: `https://www.ncbi.nlm.nih.gov/protein/${id}`,
     uniprotLink: `https://www.uniprot.org/uniprotkb?query=${id}`,
     tiles,
@@ -105,6 +111,7 @@ interface CompactSummary {
   st: number;
   sla: number;
   cp: number;
+  ic?: number; // isoformCount (only present if > 1)
 }
 
 function decodeSummary(c: CompactSummary | Record<string, unknown>): ProteinSummary {
@@ -117,6 +124,8 @@ function decodeSummary(c: CompactSummary | Record<string, unknown>): ProteinSumm
       uniqueWithHomologTiles: legacy.uniqueWithHomologTiles ?? 0,
       coverageStart: legacy.coverageStart ?? 0,
       coverageEnd: legacy.coverageEnd ?? 0,
+      isoformCount: legacy.isoformCount ?? 1,
+      isoformIds: legacy.isoformIds ?? [],
     };
   }
   const compact = c as CompactSummary;
@@ -135,6 +144,8 @@ function decodeSummary(c: CompactSummary | Record<string, unknown>): ProteinSumm
     coveragePct: compact.cp,
     coverageStart: 0,
     coverageEnd: 0,
+    isoformCount: compact.ic ?? 1,
+    isoformIds: [],
   };
 }
 
@@ -342,6 +353,23 @@ export async function fetchStatistics(): Promise<LibraryStatistics> {
   return fetchJson<LibraryStatistics>('statistics.json');
 }
 
+// Isoform redirect map: isoform_id → representative_id
+let isoformRedirectPromise: Promise<Record<string, string>> | null = null;
+
+function getIsoformRedirect(): Promise<Record<string, string>> {
+  if (!isoformRedirectPromise) {
+    isoformRedirectPromise = fetchJson<Record<string, string>>('proteins/isoform-redirect.json')
+      .catch(() => ({})); // gracefully handle missing file
+  }
+  return isoformRedirectPromise;
+}
+
+// Resolve a protein ID to its representative (if it's a collapsed isoform)
+export async function resolveProteinId(proteinId: string): Promise<string> {
+  const redirect = await getIsoformRedirect();
+  return redirect[proteinId] || proteinId;
+}
+
 // Helper to find a protein by ID - now loads individual protein file
 export async function findProteinById(proteinId: string): Promise<{ protein: Protein; speciesId: SpeciesId } | null> {
   const lookup = await fetchProteinLookup();
@@ -351,8 +379,11 @@ export async function findProteinById(proteinId: string): Promise<{ protein: Pro
     return null;
   }
 
+  // Resolve isoform redirects
+  const resolvedId = await resolveProteinId(proteinId);
+
   try {
-    const protein = await fetchProteinDetails(speciesId, proteinId);
+    const protein = await fetchProteinDetails(speciesId, resolvedId);
     return { protein, speciesId };
   } catch (e) {
     console.error(`Failed to load protein ${proteinId}:`, e);
@@ -367,4 +398,5 @@ export function preloadData(): void {
   fetchProteinLookup().catch(() => {});
   fetchSearchIndex().catch(() => {});
   getChunkIndex().catch(() => {});
+  getIsoformRedirect().catch(() => {});
 }

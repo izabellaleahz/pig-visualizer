@@ -108,7 +108,14 @@ export default function ProteinDetail() {
             {protein.nameClean}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 font-mono">{protein.id}</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{speciesName}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {speciesName}
+            {protein.isoformCount > 1 && (
+              <span className="ml-2 text-gray-400 dark:text-gray-500">
+                (representative of {protein.isoformCount} isoforms)
+              </span>
+            )}
+          </p>
           {/* External database links */}
           <div className="flex gap-3 mt-2">
             {protein.ncbiLink && (
@@ -138,6 +145,27 @@ export default function ProteinDetail() {
               </a>
             )}
           </div>
+          {/* Isoform list */}
+          {protein.isoformIds && protein.isoformIds.length > 0 && (
+            <details className="mt-2">
+              <summary className="text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300">
+                {protein.isoformIds.length} other isoform{protein.isoformIds.length > 1 ? 's' : ''} collapsed into this entry
+              </summary>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {protein.isoformIds.map(id => (
+                  <a
+                    key={id}
+                    href={`https://www.ncbi.nlm.nih.gov/protein/${id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-mono text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {id}
+                  </a>
+                ))}
+              </div>
+            </details>
+          )}
         </div>
       </div>
 

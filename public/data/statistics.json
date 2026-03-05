@@ -16,9 +16,9 @@
   },
   "identity_stats": {},
   "coverage": {
-    "proteins_with_full_coverage": 31041,
-    "proteins_with_partial_coverage": 31334,
-    "mean_coverage_pct": 85.9
+    "proteins_with_full_coverage": 11935,
+    "proteins_with_partial_coverage": 7095,
+    "mean_coverage_pct": 90.7
   },
   "mhc": {
     "sla": {
