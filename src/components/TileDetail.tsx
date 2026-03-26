@@ -95,6 +95,20 @@ export default function TileDetail({ tile, currentProteinId, onClose }: TileDeta
             </div>
           </div>
 
+          {/* Sharing info */}
+          {tile.sharedGeneCount && tile.sharedGeneCount > 1 && (
+            <div className="mb-6">
+              <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg p-4">
+                <div className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                  Shared across {tile.sharedGeneCount} genes
+                </div>
+                <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  This tile sequence appears in {tile.sharedGeneCount} different gene families
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Identity info */}
           {tile.maxIdentity != null && (
             <div className="mb-6">

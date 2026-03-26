@@ -16,8 +16,8 @@
     "median": 0.9184
   },
   "coverage": {
-    "proteins_with_full_coverage": 13223,
-    "proteins_with_partial_coverage": 5632,
+    "proteins_with_full_coverage": 13240,
+    "proteins_with_partial_coverage": 5615,
     "mean_coverage_pct": 93.1
   },
   "generation_info": {

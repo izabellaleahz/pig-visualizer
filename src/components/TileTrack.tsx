@@ -292,6 +292,11 @@ export default function TileTrack({
               {hoveredTile.humanMatchCount} human match{hoveredTile.humanMatchCount > 1 ? 'es' : ''}
             </div>
           )}
+          {hoveredTile.sharedGeneCount && hoveredTile.sharedGeneCount > 1 && (
+            <div className="text-amber-300">
+              Shared across {hoveredTile.sharedGeneCount} genes
+            </div>
+          )}
         </div>
       )}
     </div>

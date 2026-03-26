@@ -22,7 +22,8 @@ function decodeTile(arr: unknown[], index: number): TilePosition {
   const end = arr[1] as number;
   const catCode = arr[2] as string;
   const seq = arr[3] as string;
-  const rawMatches = arr[4] as [string, string, number][] | undefined;
+  const rawMatches = arr[4] as [string, string, number][] | null | undefined;
+  const sharedGeneCount = arr[5] as number | undefined;
 
   const humanMatches: HumanMatch[] = rawMatches
     ? rawMatches.map(([proteinId, name, identity]) => ({
@@ -42,6 +43,7 @@ function decodeTile(arr: unknown[], index: number): TilePosition {
     maxIdentity: humanMatches.length > 0 ? Math.max(...humanMatches.map(m => m.identity)) : null,
     humanMatchCount: humanMatches.length,
     humanMatches,
+    sharedGeneCount: sharedGeneCount && sharedGeneCount > 1 ? sharedGeneCount : undefined,
   };
 }
 

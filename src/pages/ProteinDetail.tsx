@@ -371,6 +371,11 @@ export default function ProteinDetail() {
                         {tile.maxIdentity.toFixed(1)}% ID
                       </span>
                     )}
+                    {tile.sharedGeneCount && tile.sharedGeneCount > 1 && (
+                      <span className="shrink-0 px-1.5 py-0.5 rounded text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">
+                        {tile.sharedGeneCount} genes
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-mono truncate">
                     {tile.seq}

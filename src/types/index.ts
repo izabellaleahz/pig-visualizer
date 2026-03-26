@@ -17,6 +17,7 @@ export interface TilePosition {
   maxIdentity?: number | null;
   humanMatchCount?: number;
   humanMatches?: HumanMatch[];
+  sharedGeneCount?: number;  // number of genes sharing this tile (>1 = shared)
 }
 
 export interface Protein {
