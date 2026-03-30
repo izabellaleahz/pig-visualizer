@@ -65,6 +65,115 @@ export interface SearchIndex {
   proteins: { id: string; name: string; species: SpeciesId }[];
 }
 
+// ---- MHC types ----
+
+export interface MhcLocus {
+  id: string;
+  name: string;
+  ortholog: string | null;
+  class: 'I' | 'II' | 'unknown';
+  alleleCount: number;
+  tileCount: number;
+  pairedTiles: number;
+  meanIdentity: number | null;
+  hlaAlleleCount: number;
+  hlaTileCount: number;
+}
+
+export interface MhcAllele {
+  id: string;
+  name: string;
+  source: string;
+  uniprot?: string | null;
+  frequency?: number;
+  rank?: number;
+  length: number;
+  tileCount: number;
+  pairedCount?: number;
+  meanIdentity?: number | null;
+  tiles: MhcTileCompact[];
+}
+
+// SLA tile: [start, end, seq, identity, hlaMatch, hlaTileSeq]
+// HLA tile: [start, end, seq]
+export type MhcTileCompact = (string | number | null)[];
+
+export interface MhcLocusDetail {
+  id: string;
+  name: string;
+  ortholog: string | null;
+  class: 'I' | 'II' | 'unknown';
+  alleleCount: number;
+  tileCount: number;
+  pairedTiles: number;
+  meanIdentity: number | null;
+  hlaAlleleCount: number;
+  hlaTileCount: number;
+  slaAlleles: MhcAllele[];
+  hlaAlleles: MhcAllele[];
+}
+
+export interface MhcPairCompact {
+  sl: string;  // sla locus
+  hl: string;  // hla locus
+  sa: string;  // sla allele
+  ha: string;  // hla allele
+  sp: string;  // sla protein
+  pos: number; // position
+  id: number;  // identity
+  ss: string;  // sla seq
+  hs: string;  // hla seq
+  mm: number[]; // mismatches
+  tid: string; // tile id
+}
+
+export interface MhcPairingData {
+  pairs: MhcPairCompact[];
+  identityDistribution: Record<string, number>;
+  totalPairs: number;
+  meanIdentity: number;
+}
+
+export interface MhcStatistics {
+  pipeline: string;
+  topNHla: number;
+  hla: {
+    targetAlleles: number;
+    matchedAlleles: number;
+    uniqueProteins: number;
+    totalTiles: number;
+    locusCounts: Record<string, number>;
+    source: string;
+    uniprotGenes: Record<string, string>;
+    alleles: { name: string; locus: string; freq: number; rank: number }[];
+  };
+  sla: {
+    rawAlleles: number;
+    parsedAlleles: number;
+    uniqueProteins: number;
+    totalTiles: number;
+    tilesWithHlaPair: number;
+    meanIdentity: number;
+    classDistribution: Record<string, number>;
+    geneCounts: Record<string, number>;
+    source: string;
+  };
+  pairing: {
+    totalPairs: number;
+    meanIdentity: number;
+    paired: number;
+    unpaired: number;
+    orthologMap: Record<string, string>;
+  };
+  tileParams: { tile_length: number; tile_step: number };
+  identityDistribution: Record<string, number>;
+}
+
+export interface MhcSearchIndex {
+  loci: { id: string; name: string; ortholog: string | null; type: string }[];
+  alleles: { id: string; name: string; locus: string; species: string; type: string; frequency?: number }[];
+}
+
 export interface LibraryStatistics {
   library_summary: {
     total_sequences: number;

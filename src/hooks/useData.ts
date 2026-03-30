@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Species, Protein, ProteinSummary, SearchIndex, LibraryStatistics, SpeciesId } from '../types';
+import type { Species, Protein, ProteinSummary, SearchIndex, LibraryStatistics, SpeciesId, MhcLocus, MhcLocusDetail, MhcPairingData, MhcStatistics } from '../types';
 import * as api from '../utils/api';
 
 export function useSpecies() {
@@ -101,4 +101,71 @@ export function useProtein(proteinId: string | undefined) {
   }, [proteinId]);
 
   return { protein, speciesId, loading, error };
+}
+
+// ---- MHC hooks ----
+
+export function useMhcSummary() {
+  const [loci, setLoci] = useState<MhcLocus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    api.fetchMhcSummary()
+      .then(setLoci)
+      .catch(setError)
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { loci, loading, error };
+}
+
+export function useMhcLocus(locusId: string | undefined) {
+  const [locus, setLocus] = useState<MhcLocusDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!locusId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    api.fetchMhcLocus(locusId)
+      .then(setLocus)
+      .catch(setError)
+      .finally(() => setLoading(false));
+  }, [locusId]);
+
+  return { locus, loading, error };
+}
+
+export function useMhcPairing() {
+  const [pairing, setPairing] = useState<MhcPairingData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    api.fetchMhcPairing()
+      .then(setPairing)
+      .catch(setError)
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { pairing, loading, error };
+}
+
+export function useMhcStatistics() {
+  const [statistics, setStatistics] = useState<MhcStatistics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    api.fetchMhcStatistics()
+      .then(setStatistics)
+      .catch(setError)
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { statistics, loading, error };
 }

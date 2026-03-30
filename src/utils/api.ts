@@ -393,6 +393,30 @@ export async function findProteinById(proteinId: string): Promise<{ protein: Pro
   }
 }
 
+// ---- MHC data fetching ----
+
+import type { MhcLocus, MhcLocusDetail, MhcPairingData, MhcStatistics, MhcSearchIndex } from '../types';
+
+export async function fetchMhcSummary(): Promise<MhcLocus[]> {
+  return fetchJson<MhcLocus[]>('mhc/mhc-summary.json');
+}
+
+export async function fetchMhcLocus(locusId: string): Promise<MhcLocusDetail> {
+  return fetchJson<MhcLocusDetail>(`mhc/loci/${locusId}.json`);
+}
+
+export async function fetchMhcPairing(): Promise<MhcPairingData> {
+  return fetchJson<MhcPairingData>('mhc/pairing.json');
+}
+
+export async function fetchMhcStatistics(): Promise<MhcStatistics> {
+  return fetchJson<MhcStatistics>('mhc/mhc-statistics.json');
+}
+
+export async function fetchMhcSearchIndex(): Promise<MhcSearchIndex> {
+  return fetchJson<MhcSearchIndex>('mhc/mhc-search-index.json');
+}
+
 // Preload data in background (call on app startup)
 export function preloadData(): void {
   // Preload the pig summary in background

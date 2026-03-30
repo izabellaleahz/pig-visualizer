@@ -44,6 +44,16 @@ export default function Layout() {
                   Species
                 </Link>
                 <Link
+                  to="/mhc"
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    location.pathname.startsWith('/mhc')
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  MHC
+                </Link>
+                <Link
                   to="/stats"
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     location.pathname === '/stats'
