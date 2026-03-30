@@ -19,10 +19,10 @@ export default function Methods() {
             excluded as they have no rejection potential.
           </p>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            The library also includes dedicated <strong>MHC tiling</strong>: all SLA (Swine Leukocyte Antigen)
-            alleles from the IPD-MHC database are tiled and paired with orthologous HLA (Human Leukocyte Antigen)
-            alleles from IMGT/HLA. MHC proteins are key drivers of transplant rejection and are handled
-            separately from the general proteome to preserve allelic diversity.
+            Protein sequences are sourced from <strong>UniProt reference proteomes</strong> (canonical sequences only,
+            no isoforms) to ensure characterized, non-redundant biology. MHC tiling uses the <strong>top 100 HLA
+            alleles</strong> by global frequency (from pypop allele frequency data) paired with all SLA alleles from
+            IPD-MHC.
           </p>
         </section>
 
@@ -48,33 +48,32 @@ export default function Methods() {
                 <tr className="border-b border-gray-100 dark:border-gray-700">
                   <td className="py-2 pr-4 font-medium">Paired tiles</td>
                   <td className="py-2 pr-4">Pig tiles from mixed pig-human clusters, each paired with best human match</td>
-                  <td className="py-2 pr-4">100% (keep all)</td>
-                  <td className="py-2 text-right">442,511 pig</td>
+                  <td className="py-2 pr-4">Dedup by seq</td>
+                  <td className="py-2 text-right">401,854 pig</td>
                 </tr>
                 <tr className="border-b border-gray-100 dark:border-gray-700">
                   <td className="py-2 pr-4 font-medium">Pig-only tiles</td>
                   <td className="py-2 pr-4">Pig tiles from pig-only clusters (no human ortholog)</td>
                   <td className="py-2 pr-4">95% CD-HIT</td>
-                  <td className="py-2 text-right">218,269</td>
+                  <td className="py-2 text-right">248,905</td>
                 </tr>
                 <tr className="border-b border-gray-100 dark:border-gray-700">
                   <td className="py-2 pr-4 font-medium">SLA tiles</td>
-                  <td className="py-2 pr-4">IPD-MHC SLA alleles, per-locus MAFFT consensus-filled</td>
-                  <td className="py-2 pr-4">None (all kept)</td>
-                  <td className="py-2 text-right">595</td>
+                  <td className="py-2 pr-4">IPD-MHC SLA alleles (all, no cutoff), consensus-filled</td>
+                  <td className="py-2 pr-4">Dedup vs main</td>
+                  <td className="py-2 text-right">2,397</td>
                 </tr>
                 <tr>
                   <td className="py-2 pr-4 font-medium">Human tiles</td>
-                  <td className="py-2 pr-4">Human orthologs (49AA counterparts) + HLA paired tiles</td>
+                  <td className="py-2 pr-4">Human orthologs (49AA counterparts) + top 100 HLA alleles</td>
                   <td className="py-2 pr-4">Dedup by seq</td>
-                  <td className="py-2 text-right">421,277</td>
+                  <td className="py-2 text-right">322,509</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <p className="text-gray-600 dark:text-gray-400 text-sm">
-            Pig tiles where ALL human matches are 100% identical (~164K) are <strong>excluded</strong> from the library.
-            Human ortholog tiles are only included when they are exactly 49 AA (no indels from alignment).
+            Pig tiles where ALL human matches are 100% identical (~137K) are <strong>excluded</strong> from the library.
           </p>
         </section>
 
@@ -85,24 +84,22 @@ export default function Methods() {
           </h2>
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4 font-mono text-sm overflow-x-auto">
             <pre className="text-gray-700 dark:text-gray-300">{`
-                     step1                    step2                  step3
-Pig FASTA ──┐  (exclude MHC)                                       ┌── paired_tiles.pkl
-            ├── CD-HIT 80% ──► mixed_clusters ──► MAFFT align ──► ├── paired_library.fasta
-Human FASTA─┘   cluster        pig_only_clusters                    └── pair_metadata.tsv
-                                    │
-                                    ▼  step5
-                              Naive tile + merge ──► combined_tiles.pkl
-                              Filter 100% identical    combined_library.fasta
-                                                           │
-                                        step6              │   step7
-                IPD-MHC API ──► SLA ──┐                    │
-                   MAFFT align        ├── pair ──┐         │
-                IMGT/HLA ─────► HLA ──┘  (locus) ├─ merge ┤──► final_library.fasta
-                   MAFFT align                    │  dedup │    final_metadata.tsv
-                                                  │        │    final_stats.json
-                  95% collapse pig-only ──────────┘        ▼
-                                                  transform_data.py
-                                                  ──► visualizer JSON
+UniProt Pig ──┐  step1             step2                  step3
+(UP000008227) ├── CD-HIT 80% ──► mixed_clusters ──► MAFFT align ──► paired_tiles
+UniProt Human─┘   (excl MHC)      pig_only_clusters
+(UP000005640)                          │
+                                       ▼  step5
+                                 Naive tile + merge ──► combined_tiles
+                                 Filter 100% identical
+                                                          │
+                              step6b                      │   step7
+  pypop freq xlsx ──► top 100 HLA ──┐                     │
+  IMGT/HLA + UniProt accessions     │                     │
+  IPD-MHC API ──► all SLA ──────────┤── pair ──┐          │
+                    (no cutoff)     │  (locus) ├── merge ┤──► final_library
+                                    └──────────┘   dedup │
+                                                         ▼
+                              95% collapse pig-only ─────┘
             `.trim()}</pre>
           </div>
         </section>
@@ -121,12 +118,10 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
               </h3>
               <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step1_cluster_80.py</p>
               <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                <li>Loads pig (63,575) + human (136,807) proteins with species tags</li>
-                <li><strong>Excludes MHC proteins</strong> (SLA/HLA) before clustering — handled separately in Step 6</li>
-                <li>Pig MHC: matches <code>SLA-</code>, <code>MHC class</code>, <code>histocompatibility antigen</code> (excludes MICA/MICB)</li>
-                <li>Human MHC: matches <code>HLA-</code>, <code>MHC class</code>, <code>histocompatibility antigen</code></li>
+                <li>Loads pig (45,875) + human (78,180) proteins from UniProt canonical reference proteomes</li>
+                <li><strong>Excludes MHC proteins</strong> (57 pig + 333 human = 390 total) — handled separately in Step 6b</li>
                 <li>CD-HIT at 80% identity (word size 5, <code>-g 1</code> for accuracy)</li>
-                <li>Separates into: <strong>mixed</strong> (pig+human), <strong>pig-only</strong>, and <strong>human-only</strong> clusters</li>
+                <li>14,918 mixed clusters (pig+human orthologs), 10,739 pig-only, 18,598 human-only</li>
               </ul>
             </div>
 
@@ -137,10 +132,9 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
               </h3>
               <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step2_mafft_align.py</p>
               <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                <li>For each mixed cluster: <code>mafft --auto</code> to align pig and human proteins</li>
-                <li>5-minute timeout per cluster; parallelizable with <code>--workers</code></li>
-                <li>Produces alignment that maps pig positions to human counterparts</li>
-                <li><code>--resume</code> flag to skip already-aligned clusters</li>
+                <li>14,899 clusters aligned (19 failed, 0 timeouts)</li>
+                <li><code>mafft --auto</code> per cluster, 5-minute timeout, parallelized with 8 workers</li>
+                <li>Produces position-matched pig-human alignments for tile pairing</li>
               </ul>
             </div>
 
@@ -151,12 +145,9 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
               </h3>
               <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step3_paired_tiles.py</p>
               <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                <li>Tile each pig protein in aligned clusters (49 AA, step 24)</li>
-                <li>Map tile positions through alignment to find corresponding human region</li>
-                <li>Calculate pairwise identity (ignoring gaps) for each pig-human tile pair</li>
-                <li>Keep best human match per tile</li>
-                <li>Categorize: identical (100%), similar (&ge;80%), divergent (&lt;80%)</li>
-                <li>Deduplicate by pig tile sequence (keep highest identity match)</li>
+                <li>Tile each pig protein (49 AA, step 24) and map through alignment to human</li>
+                <li>538,713 deduplicated paired tiles; mean identity 88.2%, median 95.9%</li>
+                <li>Categories: 136,859 identical (excluded), 317,244 similar, 84,610 divergent</li>
               </ul>
             </div>
 
@@ -167,51 +158,44 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
               </h3>
               <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step5_combined_library.py</p>
               <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                <li>Tiles ALL pig proteins (pig-only clusters get naive tiling, mixed clusters use paired info)</li>
-                <li>Deduplicates by sequence, tracks all human matches per tile</li>
-                <li><strong>Filters out</strong> tiles where ALL human matches are 100% identical</li>
-                <li>Categorizes into: unique, unique_with_homolog, divergent, similar</li>
+                <li>Combines paired tiles with naive-tiled pig-only proteins (282,594 unique tiles)</li>
+                <li>684,448 total pig tiles after filtering 136,859 identical to human</li>
+                <li>45,168 pig proteins covered</li>
               </ul>
             </div>
 
-            {/* Step 6 */}
+            {/* Step 6b */}
             <div className="border-l-4 border-purple-500 pl-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-                Step 6: MHC tiling — SLA + HLA
+                Step 6b: MHC tiling — Top 100 HLA + all SLA
               </h3>
-              <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step6_sla_tiles.py</p>
+              <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step6b_uniprot_mhc_tiles.py</p>
 
               <div className="ml-4 mb-3">
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">SLA (Swine Leukocyte Antigen):</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">HLA (Top 100 by frequency):</p>
                 <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                  <li>Fetches all SLA alleles from the IPD-MHC API (paginated)</li>
-                  <li>Groups alleles by locus (SLA-1, SLA-DRB1, SLA-DQA, etc.)</li>
-                  <li>Per-locus MAFFT alignment to build consensus sequence</li>
-                  <li>Fills ambiguous residues (X/?) with consensus amino acid at each position</li>
-                  <li>Deduplicates to unique protein sequences — no CD-HIT collapse, preserving allelic variants</li>
-                  <li>Tiles all unique SLA proteins (49 AA, step 24) &rarr; 1,265 SLA tiles from 172 unique proteins</li>
+                  <li>Allele frequencies from pypop data (288 CWD alleles across 6 loci)</li>
+                  <li>Top 100 by global frequency: A(13), B(17), C(19), DRB1(18), DQA1(7), DQB1(13), DPA1(4), DPB1(9)</li>
+                  <li>99/100 matched in IMGT/HLA; each annotated with UniProt gene accession</li>
+                  <li>Per-locus MAFFT align, consensus fill, dedup &rarr; 99 unique proteins &rarr; 1,256 tiles</li>
                 </ul>
               </div>
 
               <div className="ml-4 mb-3">
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">HLA (Human Leukocyte Antigen):</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">SLA (all alleles, no cutoff):</p>
                 <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                  <li>Loads ~44K alleles from IMGT/HLA (<code>hla_prot.fasta</code>)</li>
-                  <li>Filters to relevant loci: Class I (A, B, C, E, F, G) and Class II (DRA, DRB1/3/4/5, DQA1, DQB1, DPA1, DPB1, DMA, DMB, DOA, DOB)</li>
-                  <li>Excludes null alleles (N suffix) and sequences &lt;49 AA</li>
-                  <li>Same per-locus pipeline: MAFFT align &rarr; consensus fill &rarr; validate &rarr; tile</li>
-                  <li>MAFFT strategy adapts by locus size: <code>--auto</code> (&le;500 seqs), <code>--retree 1</code> (&le;2000), <code>--parttree</code> (&gt;2000)</li>
-                  <li>26,154 unique HLA proteins &rarr; 276,445 HLA tiles</li>
+                  <li>529 alleles from IPD-MHC API, 505 parsed with protein sequences</li>
+                  <li>Per-locus MAFFT align &rarr; 474 unique proteins &rarr; 4,917 tiles</li>
+                  <li>24 SLA loci including Class I (SLA-1/2/3/6/7/8/9/11/12) and Class II (DRA/DRB/DQA/DQB1/DMA/DOA/DOB)</li>
                 </ul>
               </div>
 
               <div className="ml-4">
                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">SLA&harr;HLA pairing:</p>
                 <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                  <li>Ortholog locus map: SLA-1&rarr;HLA-A, SLA-2&rarr;HLA-B, SLA-3&rarr;HLA-C, SLA-DRA&rarr;HLA-DRA, SLA-DRB1&rarr;HLA-DRB1, etc.</li>
-                  <li>For each SLA tile, finds best-matching HLA tile from orthologous locus by 49AA identity</li>
-                  <li>99.2% of SLA tiles successfully paired (1,255 of 1,265); mean identity 72.4%</li>
-                  <li>Minor SLA loci without orthologs (SLA-6/7/8/11/12) remain unpaired</li>
+                  <li>Ortholog locus map: SLA-1&rarr;HLA-A, SLA-2&rarr;HLA-B, SLA-3&rarr;HLA-C, etc.</li>
+                  <li>4,224 SLA tiles paired (693 unpaired — minor loci without HLA ortholog)</li>
+                  <li>Mean SLA&harr;HLA identity: 39.9%</li>
                 </ul>
               </div>
             </div>
@@ -223,12 +207,10 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
               </h3>
               <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step7_final_assembly.py</p>
               <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                <li>95% CD-HIT collapse of pig-only tiles (263,054 &rarr; 218,269; 17% savings)</li>
+                <li>95% CD-HIT collapse of pig-only tiles (282,594 &rarr; 248,905; 12% savings)</li>
                 <li>Merge: paired pig tiles + collapsed pig-only + SLA tiles</li>
-                <li>Extract human ortholog tiles: 49 AA human counterparts from paired clusters (379,204 tiles)</li>
-                <li>Add HLA tiles as paired human counterparts (42,073 tiles)</li>
-                <li>Final deduplication pass across all pools</li>
-                <li>SLA tiles deduped against existing pig tiles: 670 of 1,265 already present &rarr; 595 added</li>
+                <li>Human ortholog tiles (321,869) + HLA tiles (640 after dedup)</li>
+                <li>Final deduplication across all pools</li>
               </ul>
             </div>
           </div>
@@ -267,17 +249,12 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
                 <tr className="border-b border-gray-100 dark:border-gray-700">
                   <td className="py-2 pr-4 font-medium">Pig-only collapse</td>
                   <td className="py-2 pr-4">95%</td>
-                  <td className="py-2">CD-HIT identity for redundancy reduction of pig-only tiles</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-2 pr-4 font-medium">SLA/HLA collapse</td>
-                  <td className="py-2 pr-4">None</td>
-                  <td className="py-2">All unique allelic variants preserved (sequence dedup only)</td>
+                  <td className="py-2">CD-HIT identity for pig-only redundancy reduction</td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4 font-medium">Gap tolerance</td>
-                  <td className="py-2 pr-4">Max 20%</td>
-                  <td className="py-2">Maximum gaps in human alignment region for valid pairing</td>
+                  <td className="py-2 pr-4 font-medium">Identical exclusion</td>
+                  <td className="py-2 pr-4">100%</td>
+                  <td className="py-2">Tiles 100% identical to human are excluded (no rejection potential)</td>
                 </tr>
               </tbody>
             </table>
@@ -289,94 +266,64 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
             Tile Categories
           </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Pig tiles are categorized based on their relationship to human homologs.
-            Human ortholog and HLA tiles are included as paired counterparts for differential enrichment.
-          </p>
 
-          <h3 className="text-md font-medium text-gray-800 dark:text-gray-200 mb-3">Pig Tiles (661,375)</h3>
+          <h3 className="text-md font-medium text-gray-800 dark:text-gray-200 mb-3">Pig Tiles (653,156)</h3>
           <div className="space-y-3 mb-6">
             <div className="flex items-start gap-3">
               <div className="w-4 h-4 rounded bg-red-600 shrink-0 mt-1" />
               <div>
-                <strong className="text-gray-900 dark:text-white">Unique — 218,269 (33.0%)</strong>
+                <strong className="text-gray-900 dark:text-white">Unique — 248,905 (38.1%)</strong>
                 <span className="text-gray-600 dark:text-gray-400 ml-2">
-                  No human homolog detected. These pig proteins have no close match in the human proteome
-                  at 80% clustering threshold. Highest rejection potential — the immune system has never
-                  seen these sequences.
-                </span>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-4 h-4 rounded bg-orange-500 shrink-0 mt-1" />
-              <div>
-                <strong className="text-gray-900 dark:text-white">Unique with Homolog — 2 ({"<"}0.1%)</strong>
-                <span className="text-gray-600 dark:text-gray-400 ml-2">
-                  Has a human homolog protein, but the alignment at this tile position was too gappy
-                  to generate a valid paired comparison. Likely highly divergent regions within
-                  otherwise conserved proteins.
+                  No human homolog at 80% clustering. Highest rejection potential — completely foreign to human immune system.
                 </span>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-4 h-4 rounded bg-yellow-500 shrink-0 mt-1" />
               <div>
-                <strong className="text-gray-900 dark:text-white">Divergent — 72,480 (11.0%)</strong>
+                <strong className="text-gray-900 dark:text-white">Divergent — 84,610 (13.0%)</strong>
                 <span className="text-gray-600 dark:text-gray-400 ml-2">
-                  Has human match with &lt;80% sequence identity. These tiles differ significantly
-                  from their human counterpart. Strong rejection candidates — enough sequence differences
-                  to present novel epitopes.
+                  Has human match with &lt;80% identity. Strong rejection candidates with many epitope differences.
                 </span>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-4 h-4 rounded bg-green-500 shrink-0 mt-1" />
               <div>
-                <strong className="text-gray-900 dark:text-white">Similar — 370,029 (55.9%)</strong>
+                <strong className="text-gray-900 dark:text-white">Similar — 317,244 (48.6%)</strong>
                 <span className="text-gray-600 dark:text-gray-400 ml-2">
-                  Has human match with 80-99% sequence identity. These tiles have subtle epitope
-                  differences that may trigger immune response. The paired human tile enables
-                  direct differential enrichment to pinpoint rejection-specific signal.
+                  Has human match with 80-99% identity. Subtle epitope differences; paired human tile enables differential enrichment.
                 </span>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-4 h-4 rounded bg-purple-500 shrink-0 mt-1" />
               <div>
-                <strong className="text-gray-900 dark:text-white">SLA — 595 (0.1%)</strong>
+                <strong className="text-gray-900 dark:text-white">SLA — 2,397 (0.4%)</strong>
                 <span className="text-gray-600 dark:text-gray-400 ml-2">
-                  Swine Leukocyte Antigen tiles from IPD-MHC alleles. Per-locus MAFFT aligned and
-                  consensus-filled to resolve ambiguous residues. Each SLA tile is paired with its
-                  best-matching HLA counterpart from the orthologous locus.
-                  Key drivers of acute transplant rejection.
+                  Swine Leukocyte Antigen tiles from 474 unique proteins (IPD-MHC). Key drivers of transplant rejection.
                 </span>
               </div>
             </div>
           </div>
 
-          <h3 className="text-md font-medium text-gray-800 dark:text-gray-200 mb-3">Human Tiles (421,277)</h3>
+          <h3 className="text-md font-medium text-gray-800 dark:text-gray-200 mb-3">Human Tiles (322,509)</h3>
           <div className="space-y-3 mb-6">
             <div className="flex items-start gap-3">
               <div className="w-4 h-4 rounded bg-cyan-500 shrink-0 mt-1" />
               <div>
-                <strong className="text-gray-900 dark:text-white">Human Ortholog — 379,204</strong>
+                <strong className="text-gray-900 dark:text-white">Human Ortholog — 321,869</strong>
                 <span className="text-gray-600 dark:text-gray-400 ml-2">
-                  49 AA human counterpart tiles extracted from MAFFT alignments of mixed clusters.
-                  Only tiles with exactly 49 AA (no indels) are included in the library. These are
-                  the direct comparison tiles — after IP, compare pig tile enrichment vs its paired
-                  human ortholog tile to identify rejection-specific epitopes.
+                  49 AA human counterpart tiles for differential enrichment comparison.
                 </span>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <div className="w-4 h-4 rounded bg-blue-500 shrink-0 mt-1" />
               <div>
-                <strong className="text-gray-900 dark:text-white">HLA — 42,073</strong>
+                <strong className="text-gray-900 dark:text-white">HLA — 640</strong>
                 <span className="text-gray-600 dark:text-gray-400 ml-2">
-                  Human Leukocyte Antigen tiles from IMGT/HLA. These are the paired counterparts
-                  to SLA tiles, derived from the same per-locus MAFFT alignment pipeline.
-                  Enables MHC-specific differential enrichment: compare SLA tile enrichment vs
-                  its orthologous HLA tile to identify MHC-specific rejection epitopes.
+                  Top 100 HLA alleles (by global frequency) as counterparts to SLA tiles.
                 </span>
               </div>
             </div>
@@ -385,10 +332,9 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
           <div className="flex items-start gap-3">
             <div className="w-4 h-4 rounded bg-gray-400 shrink-0 mt-1" />
             <div>
-              <strong className="text-gray-900 dark:text-white">Excluded — Identical (~164K)</strong>
+              <strong className="text-gray-900 dark:text-white">Excluded — Identical (~137K)</strong>
               <span className="text-gray-600 dark:text-gray-400 ml-2">
-                100% identical to human counterpart. These tiles were excluded from the library
-                as they have no rejection potential — the immune system recognizes them as self.
+                100% identical to human. No rejection potential.
               </span>
             </div>
           </div>
@@ -404,91 +350,43 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
               <tbody className="text-gray-600 dark:text-gray-400">
                 <tr className="border-b border-gray-200 dark:border-gray-700 font-semibold text-gray-800 dark:text-gray-200">
                   <td className="py-2">Total unique sequences</td>
-                  <td className="py-2 text-right">1,082,652</td>
+                  <td className="py-2 text-right">975,665</td>
                 </tr>
                 <tr className="border-b border-gray-100 dark:border-gray-700">
                   <td className="py-2 pl-4">Pig tiles</td>
-                  <td className="py-2 text-right">661,375</td>
+                  <td className="py-2 text-right">653,156</td>
                 </tr>
                 <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-2 pl-8 text-xs">Paired (from mixed clusters)</td>
-                  <td className="py-2 text-right text-xs">442,511</td>
+                  <td className="py-2 pl-8 text-xs">Paired (similar + divergent)</td>
+                  <td className="py-2 text-right text-xs">401,854</td>
                 </tr>
                 <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-2 pl-8 text-xs">Pig-only (no human homolog)</td>
-                  <td className="py-2 text-right text-xs">218,269</td>
+                  <td className="py-2 pl-8 text-xs">Pig-only (unique, no human homolog)</td>
+                  <td className="py-2 text-right text-xs">248,905</td>
                 </tr>
                 <tr className="border-b border-gray-100 dark:border-gray-700">
                   <td className="py-2 pl-8 text-xs">SLA (MHC alleles)</td>
-                  <td className="py-2 text-right text-xs">595</td>
+                  <td className="py-2 text-right text-xs">2,397</td>
                 </tr>
                 <tr className="border-b border-gray-100 dark:border-gray-700">
                   <td className="py-2 pl-4">Human tiles</td>
-                  <td className="py-2 text-right">421,277</td>
+                  <td className="py-2 text-right">322,509</td>
                 </tr>
                 <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-2 pl-8 text-xs">Human orthologs (from paired clusters)</td>
-                  <td className="py-2 text-right text-xs">379,204</td>
+                  <td className="py-2 pl-8 text-xs">Human orthologs (paired counterparts)</td>
+                  <td className="py-2 text-right text-xs">321,869</td>
                 </tr>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <td className="py-2 pl-8 text-xs">HLA (MHC paired counterparts)</td>
-                  <td className="py-2 text-right text-xs">42,073</td>
+                  <td className="py-2 pl-8 text-xs">HLA (top 100 alleles)</td>
+                  <td className="py-2 text-right text-xs">640</td>
                 </tr>
                 <tr className="border-b border-gray-100 dark:border-gray-700">
                   <td className="py-2">Pig proteins covered</td>
-                  <td className="py-2 text-right">62,375</td>
+                  <td className="py-2 text-right">45,602</td>
                 </tr>
                 <tr>
-                  <td className="py-2">Mean protein coverage</td>
-                  <td className="py-2 text-right">85.9%</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <h3 className="text-md font-medium text-gray-800 dark:text-gray-200 mb-2">MHC Breakdown</h3>
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-            <table className="w-full text-sm">
-              <tbody className="text-gray-600 dark:text-gray-400">
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-2">SLA alleles fetched (IPD-MHC)</td>
-                  <td className="py-2 text-right">200</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-2">SLA unique proteins after dedup</td>
-                  <td className="py-2 text-right">172</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-2">Total SLA tiles (before dedup with main library)</td>
-                  <td className="py-2 text-right">1,265</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-2">SLA loci: Class I</td>
-                  <td className="py-2 text-right">SLA-1 (284 tiles)</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-2">SLA loci: Class II</td>
-                  <td className="py-2 text-right">DRB1 (435), DQB1 (269), DQA (182), DRA (50), DMA (33), DRB5 (10), DRB2 (2)</td>
-                </tr>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <td className="py-2">SLA tiles with HLA pair</td>
-                  <td className="py-2 text-right">1,255 / 1,265 (99.2%)</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-2">HLA alleles loaded (IMGT/HLA)</td>
-                  <td className="py-2 text-right">41,522</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-2">HLA unique proteins after dedup</td>
-                  <td className="py-2 text-right">26,154</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-2">Total HLA tiles generated</td>
-                  <td className="py-2 text-right">276,445</td>
-                </tr>
-                <tr>
-                  <td className="py-2">Mean SLA&harr;HLA identity</td>
-                  <td className="py-2 text-right">72.4%</td>
+                  <td className="py-2">Excluded (100% identical to human)</td>
+                  <td className="py-2 text-right">136,859</td>
                 </tr>
               </tbody>
             </table>
@@ -503,24 +401,24 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
           <div className="space-y-3 text-gray-600 dark:text-gray-400 text-sm">
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
               <p className="font-medium text-gray-800 dark:text-gray-200">Pig proteome</p>
-              <p>Sus scrofa — NCBI RefSeq GCF_000003025.6 (Sscrofa11.1)</p>
-              <p>63,575 proteins</p>
+              <p>Sus scrofa — UniProt reference proteome UP000008227 (canonical, no isoforms)</p>
+              <p>45,875 proteins after filtering (&ge;49 AA, &le;10% ambiguous residues)</p>
             </div>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
               <p className="font-medium text-gray-800 dark:text-gray-200">Human proteome</p>
-              <p>Homo sapiens — NCBI RefSeq GCF_000001405.40 (GRCh38.p14)</p>
-              <p>136,807 proteins</p>
+              <p>Homo sapiens — UniProt reference proteome UP000005640 (canonical, no isoforms)</p>
+              <p>78,180 proteins after filtering</p>
             </div>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-              <p className="font-medium text-gray-800 dark:text-gray-200">SLA alleles</p>
-              <p>IPD-MHC database — all SLA alleles via REST API</p>
-              <p>Per-locus MAFFT aligned; consensus-filled to resolve ambiguous residues</p>
+              <p className="font-medium text-gray-800 dark:text-gray-200">HLA alleles (top 100)</p>
+              <p>IMGT/HLA database filtered to top 100 alleles by global frequency (pypop CWD data)</p>
+              <p>Each allele annotated with UniProt canonical gene accession (P04439, P01889, etc.)</p>
+              <p>99 alleles matched: A(13), B(17), C(19), DRB1(18), DQ(20), DP(13)</p>
             </div>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-              <p className="font-medium text-gray-800 dark:text-gray-200">HLA alleles</p>
-              <p>IMGT/HLA database — <code>hla_prot.fasta</code> from ANHIG/IMGTHLA GitHub</p>
-              <p>~44K alleles, 26,154 unique protein sequences after dedup</p>
-              <p>Filtered to Class I (A/B/C/E/F/G) and Class II (DR/DQ/DP/DM/DO) loci</p>
+              <p className="font-medium text-gray-800 dark:text-gray-200">SLA alleles (all)</p>
+              <p>IPD-MHC database — 529 alleles via REST API, no frequency cutoff</p>
+              <p>474 unique proteins after per-locus MAFFT alignment and consensus fill</p>
             </div>
           </div>
         </section>
@@ -534,31 +432,19 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
             The library is designed for paired differential enrichment. After IP with patient sera:
           </p>
           <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-2 text-sm">
-            <li>Each pig tile has a matching human ortholog tile (when available) in the library</li>
-            <li><strong>Higher pig enrichment vs human</strong> &rarr; rejection epitope (immune response to pig-specific sequence)</li>
-            <li><strong>Similar enrichment for both</strong> &rarr; conserved epitope (cross-reactive, less likely rejection-specific)</li>
+            <li><strong>Higher pig enrichment vs human</strong> &rarr; rejection epitope (pig-specific immune response)</li>
+            <li><strong>Similar enrichment</strong> &rarr; conserved epitope (cross-reactive, less likely rejection-specific)</li>
             <li><strong>Higher human enrichment</strong> &rarr; autoimmune or pre-existing epitope</li>
-            <li>383,185 pig tiles (57.9%) have synthesizable 49AA paired human tiles for direct comparison</li>
-            <li>SLA&harr;HLA pairs enable the same analysis specifically for MHC antigens</li>
+            <li>401,854 pig tiles have paired human counterparts for direct comparison</li>
+            <li>SLA&harr;HLA pairs enable MHC-specific differential enrichment</li>
           </ul>
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mt-4">
-            <p className="text-sm text-yellow-800 dark:text-yellow-300">
-              <strong>Note:</strong> 56,412 pig tiles have human counterparts with indels (not exactly 49 AA).
-              These human tiles are excluded from the library since they cannot be synthesized at standard
-              PhIP-seq tile length, but the identity information is preserved in tile metadata.
-            </p>
-          </div>
         </section>
 
-        {/* ── Ortholog Locus Map ── */}
+        {/* ── SLA↔HLA Ortholog Map ── */}
         <section className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
             SLA&harr;HLA Ortholog Locus Map
           </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-4 text-sm">
-            Each SLA tile is paired with its best-matching HLA tile from the orthologous locus.
-            This mapping reflects evolutionary relationships between pig and human MHC genes:
-          </p>
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -569,66 +455,30 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
                 </tr>
               </thead>
               <tbody className="text-gray-600 dark:text-gray-400">
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-1.5 pr-6">SLA-1</td>
-                  <td className="py-1.5 pr-6">HLA-A</td>
-                  <td className="py-1.5">I</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-1.5 pr-6">SLA-2</td>
-                  <td className="py-1.5 pr-6">HLA-B</td>
-                  <td className="py-1.5">I</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-1.5 pr-6">SLA-3</td>
-                  <td className="py-1.5 pr-6">HLA-C</td>
-                  <td className="py-1.5">I</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-1.5 pr-6">SLA-DRA</td>
-                  <td className="py-1.5 pr-6">HLA-DRA</td>
-                  <td className="py-1.5">II</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-1.5 pr-6">SLA-DRB1</td>
-                  <td className="py-1.5 pr-6">HLA-DRB1</td>
-                  <td className="py-1.5">II</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-1.5 pr-6">SLA-DQA</td>
-                  <td className="py-1.5 pr-6">HLA-DQA1</td>
-                  <td className="py-1.5">II</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-1.5 pr-6">SLA-DQB1</td>
-                  <td className="py-1.5 pr-6">HLA-DQB1</td>
-                  <td className="py-1.5">II</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-1.5 pr-6">SLA-DMA</td>
-                  <td className="py-1.5 pr-6">HLA-DMA</td>
-                  <td className="py-1.5">II</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-1.5 pr-6">SLA-DMB</td>
-                  <td className="py-1.5 pr-6">HLA-DMB</td>
-                  <td className="py-1.5">II</td>
-                </tr>
-                <tr className="border-b border-gray-100 dark:border-gray-700">
-                  <td className="py-1.5 pr-6">SLA-DOA</td>
-                  <td className="py-1.5 pr-6">HLA-DOA</td>
-                  <td className="py-1.5">II</td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 pr-6">SLA-DOB</td>
-                  <td className="py-1.5 pr-6">HLA-DOB</td>
-                  <td className="py-1.5">II</td>
-                </tr>
+                {[
+                  ['SLA-1', 'HLA-A', 'I'],
+                  ['SLA-2', 'HLA-B', 'I'],
+                  ['SLA-3', 'HLA-C', 'I'],
+                  ['SLA-DRA', 'HLA-DRA', 'II'],
+                  ['SLA-DRB1', 'HLA-DRB1', 'II'],
+                  ['SLA-DQA', 'HLA-DQA1', 'II'],
+                  ['SLA-DQB1', 'HLA-DQB1', 'II'],
+                  ['SLA-DMA', 'HLA-DMA', 'II'],
+                  ['SLA-DMB', 'HLA-DMB', 'II'],
+                  ['SLA-DOA', 'HLA-DOA', 'II'],
+                  ['SLA-DOB', 'HLA-DOB', 'II'],
+                ].map(([sla, hla, cls]) => (
+                  <tr key={sla} className="border-b border-gray-100 dark:border-gray-700">
+                    <td className="py-1.5 pr-6">{sla}</td>
+                    <td className="py-1.5 pr-6">{hla}</td>
+                    <td className="py-1.5">{cls}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
           <p className="text-gray-500 dark:text-gray-400 text-xs mt-2">
-            Minor SLA loci (SLA-6, SLA-7, SLA-8, SLA-11, SLA-12) have no clear HLA ortholog and remain unpaired.
+            Minor SLA loci (SLA-6/7/8/9/11/12, MIC, TAP) have no clear HLA ortholog and remain unpaired.
           </p>
         </section>
 
@@ -637,17 +487,14 @@ Human FASTA─┘   cluster        pig_only_clusters                    └─�
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
             Pipeline Scripts
           </h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-2 text-sm">
-            The library was generated using the following pipeline:
-          </p>
           <ol className="list-decimal list-inside text-gray-600 dark:text-gray-400 space-y-1 font-mono text-sm">
             <li>step1_cluster_80.py — CD-HIT clustering at 80% (MHC excluded)</li>
             <li>step2_mafft_align.py — MAFFT alignment of mixed clusters</li>
             <li>step3_paired_tiles.py — Generate paired pig-human tiles</li>
             <li>step5_combined_library.py — Combine with pig-only tiles, filter 100% identical</li>
-            <li>step6_sla_tiles.py — SLA/HLA allele tiling and cross-species pairing</li>
-            <li>step7_final_assembly.py — Final assembly: merge all pools + human orthologs</li>
-            <li>transform_data.py — Generate visualizer JSON from final tiles</li>
+            <li>step6b_uniprot_mhc_tiles.py — Top 100 HLA + all SLA, UniProt-sourced</li>
+            <li>step7_final_assembly.py — Final assembly: merge all pools + collapse + dedup</li>
+            <li>step8_oligo_generation.py — Codon optimize &rarr; 195bp DNA oligos</li>
           </ol>
         </section>
       </div>
