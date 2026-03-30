@@ -1,23 +1,23 @@
 {
   "library_summary": {
-    "total_sequences": 953974,
-    "total_pig_tiles": 631465,
-    "total_human_tiles": 322509,
-    "unique_tiles": 227214,
+    "total_sequences": 570089,
+    "total_pig_tiles": 382148,
+    "total_human_tiles": 187941,
+    "unique_tiles": 157353,
     "unique_with_homolog_tiles": 0,
-    "divergent_tiles": 84610,
-    "similar_tiles": 317244,
-    "sla_tiles": 2397,
+    "divergent_tiles": 39613,
+    "similar_tiles": 182767,
+    "sla_tiles": 2415,
     "hla_tiles": 640,
-    "excluded_identical": 55380,
-    "pig_proteins": 19595,
-    "human_proteins": 322509
+    "excluded_identical": 10283,
+    "pig_proteins": 19529,
+    "human_proteins": 187941
   },
   "identity_stats": {},
   "coverage": {
-    "proteins_with_full_coverage": 13502,
-    "proteins_with_partial_coverage": 6093,
-    "mean_coverage_pct": 92.8
+    "proteins_with_full_coverage": 12708,
+    "proteins_with_partial_coverage": 6821,
+    "mean_coverage_pct": 91.2
   },
   "generation_info": {
     "pipeline": "Combined Pig Tile Library (Alignment-based)",

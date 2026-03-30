@@ -156,7 +156,7 @@ const memoryCache: Record<string, unknown> = {};
 
 // IndexedDB for persistent caching across sessions
 const DB_NAME = 'pig-visualizer-cache';
-const DB_VERSION = 2; // Bumped to invalidate stale cache from pre-compact format
+const DB_VERSION = 3; // Bumped: UniProt canonical one-per-gene data
 const STORE_NAME = 'json-cache';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
