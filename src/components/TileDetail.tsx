@@ -140,10 +140,15 @@ export default function TileDetail({ tile, currentProteinId, onClose }: TileDeta
                   const humanSeq = match.tile || '';
                   return (
                     <div key={i} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {match.name || match.proteinId}
-                        </span>
+                      <div className="flex items-center justify-between mb-1">
+                        <div>
+                          <span className="text-sm font-semibold text-cyan-700 dark:text-cyan-400">
+                            Human: {match.description || match.name || match.proteinId}
+                          </span>
+                          {match.description && match.name && (
+                            <span className="ml-2 text-xs text-gray-500">({match.name})</span>
+                          )}
+                        </div>
                         <span className={`text-sm font-bold ${
                           match.identity >= 85 ? 'text-green-600' :
                           match.identity >= 70 ? 'text-yellow-600' :

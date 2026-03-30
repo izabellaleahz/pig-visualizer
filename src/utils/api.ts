@@ -22,7 +22,7 @@ function decodeTile(arr: unknown[], index: number): TilePosition {
   const end = arr[1] as number;
   const catCode = arr[2] as string;
   const seq = arr[3] as string;
-  const rawMatches = arr[4] as [string, string, number, string?][] | null | undefined;
+  const rawMatches = arr[4] as [string, string, number, string?, string?][] | null | undefined;
   const sharedGeneCount = arr[5] as number | undefined;
 
   const humanMatches: HumanMatch[] = rawMatches
@@ -31,6 +31,7 @@ function decodeTile(arr: unknown[], index: number): TilePosition {
         name: (m[1] as string) || (m[0] as string),
         tile: (m[3] as string) || '',
         identity: m[2] as number,
+        description: (m[4] as string) || undefined,
       }))
     : [];
 

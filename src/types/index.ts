@@ -3,7 +3,8 @@ export type SpeciesId = 'pig' | 'human';
 
 export interface HumanMatch {
   proteinId: string;
-  name?: string;  // Human-readable protein name
+  name?: string;       // Gene symbol (e.g., PKD1)
+  description?: string; // Full protein name (e.g., Polycystin-1)
   tile: string;
   identity: number;
 }
