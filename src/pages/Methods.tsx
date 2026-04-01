@@ -84,22 +84,19 @@ export default function Methods() {
           </h2>
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4 font-mono text-sm overflow-x-auto">
             <pre className="text-gray-700 dark:text-gray-300">{`
-UniProt Pig ──┐  step1             step2                  step3
-(UP000008227) ├── CD-HIT 80% ──► mixed_clusters ──► MAFFT align ──► paired_tiles
-UniProt Human─┘   (excl MHC)      pig_only_clusters
-(UP000005640)                          │
-                                       ▼  step5
-                                 Naive tile + merge ──► combined_tiles
-                                 Filter 100% identical
-                                                          │
-                              step6b                      │   step7
-  pypop freq xlsx ──► top 100 HLA ──┐                     │
-  IMGT/HLA + UniProt accessions     │                     │
-  IPD-MHC API ──► all SLA ──────────┤── pair ──┐          │
-                    (no cutoff)     │  (locus) ├── merge ┤──► final_library
-                                    └──────────┘   dedup │
-                                                         ▼
-                              95% collapse pig-only ─────┘
+UniProt Pig ──┐  step1: RBH                step2              step3
+(UP000008227) ├── BLAST pig→human ──┐                         ┌── paired tiles
+UniProt Human─┘   BLAST human→pig ──┤── reciprocal ──► MAFFT ─┤── pig-only tiles
+(UP000005640)     (excl MHC)        │   best hits     align   └── combined library
+                                    └── pig-only              (filter 100% identical)
+                                        (no RBH)                    │
+                              step6b                                │  step7
+  pypop freq ──► top 100 HLA (classical) ──┐                       │
+  IMGT/HLA ──► all HLA (non-classical) ────┤── pair ──┐            │
+  IPD-MHC ──► all SLA (no cutoff) ─────────┘  (locus) ├── merge ──┤
+                                                       │    dedup  │
+                           90% CD-HIT pig-only ────────┘           ▼
+                                                          final_library
             `.trim()}</pre>
           </div>
         </section>
@@ -114,70 +111,69 @@ UniProt Human─┘   (excl MHC)      pig_only_clusters
             {/* Step 1 */}
             <div className="border-l-4 border-pink-500 pl-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-                Step 1: Cluster at 80% identity
+                Step 1: Reciprocal Best BLAST Hit (RBH) ortholog detection
               </h3>
-              <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step1_cluster_80.py</p>
+              <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step1_rbh_orthologs.py</p>
               <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                <li>Loads pig (45,875) + human (78,180) proteins from UniProt canonical reference proteomes</li>
-                <li><strong>Excludes MHC proteins</strong> (57 pig + 333 human = 390 total) — handled separately in Step 6b</li>
-                <li>CD-HIT at 80% identity (word size 5, <code>-g 1</code> for accuracy)</li>
-                <li>14,918 mixed clusters (pig+human orthologs), 10,739 pig-only, 18,598 human-only</li>
+                <li>Loads pig (~22K) + human (~21K) proteins from UniProt canonical reference proteomes (one per gene)</li>
+                <li><strong>Excludes MHC proteins</strong> — handled separately in Step 6b</li>
+                <li>BLAST pig&rarr;human and human&rarr;pig proteomes (E-value &lt; 1e-5)</li>
+                <li>Reciprocal best hits: if pig A's best human hit is B AND B's best pig hit is A, they're orthologs</li>
+                <li><strong>16,983 ortholog pairs (76.6%)</strong> — including 3,749 pairs below 80% identity that CD-HIT would miss</li>
+                <li>5,175 pig proteins with no human ortholog at any identity (truly pig-specific)</li>
               </ul>
             </div>
 
             {/* Step 2 */}
             <div className="border-l-4 border-pink-500 pl-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-                Step 2: MAFFT alignment of mixed clusters
+                Step 2: MAFFT pairwise alignment
               </h3>
-              <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step2_mafft_align.py</p>
+              <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step2_rbh_align.py</p>
               <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                <li>14,899 clusters aligned (19 failed, 0 timeouts)</li>
-                <li><code>mafft --auto</code> per cluster, 5-minute timeout, parallelized with 8 workers</li>
-                <li>Produces position-matched pig-human alignments for tile pairing</li>
+                <li>MAFFT pairwise alignment of each pig-human ortholog pair</li>
+                <li>16,983 pairs aligned, position-matched for tile extraction</li>
+                <li>Catches orthologs at any identity level (27-100%)</li>
               </ul>
             </div>
 
             {/* Step 3 */}
             <div className="border-l-4 border-pink-500 pl-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-                Step 3: Generate paired tiles
+                Step 3: Paired tiles + pig-only tiles
               </h3>
-              <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step3_paired_tiles.py</p>
+              <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step3_rbh_paired_tiles.py</p>
               <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                <li>Tile each pig protein (49 AA, step 24) and map through alignment to human</li>
-                <li>538,713 deduplicated paired tiles; mean identity 88.2%, median 95.9%</li>
-                <li>Categories: 136,859 identical (excluded), 317,244 similar, 84,610 divergent</li>
-              </ul>
-            </div>
-
-            {/* Step 5 */}
-            <div className="border-l-4 border-pink-500 pl-4">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-                Step 5: Combined library
-              </h3>
-              <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step5_combined_library.py</p>
-              <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                <li>Combines paired tiles with naive-tiled pig-only proteins (282,594 unique tiles)</li>
-                <li>684,448 total pig tiles after filtering 136,859 identical to human</li>
-                <li>45,168 pig proteins covered</li>
+                <li>Tile each pig protein (49 AA, step 24), map through alignment to human</li>
+                <li>~332K paired tiles (similar + divergent), ~78K identical (excluded)</li>
+                <li>~50K pig-only tiles (naive tiled, no human ortholog)</li>
+                <li>89% of pig tiles have a human counterpart for differential enrichment</li>
               </ul>
             </div>
 
             {/* Step 6b */}
             <div className="border-l-4 border-purple-500 pl-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-                Step 6b: MHC tiling — Top 100 HLA + all SLA
+                Step 6b: MHC tiling — Top 100 HLA + non-classical + all SLA
               </h3>
               <p className="text-sm font-mono text-gray-500 dark:text-gray-400 mb-2">step6b_uniprot_mhc_tiles.py</p>
 
               <div className="ml-4 mb-3">
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">HLA (Top 100 by frequency):</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">HLA (Classical — top 100 by frequency):</p>
                 <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
-                  <li>Allele frequencies from pypop data (288 CWD alleles across 6 loci)</li>
+                  <li>Allele frequencies from pypop data (288 CWD alleles across 6 classical loci)</li>
                   <li>Top 100 by global frequency: A(13), B(17), C(19), DRB1(18), DQA1(7), DQB1(13), DPA1(4), DPB1(9)</li>
-                  <li>99/100 matched in IMGT/HLA; each annotated with UniProt gene accession</li>
-                  <li>Per-locus MAFFT align, consensus fill, dedup &rarr; 99 unique proteins &rarr; 1,256 tiles</li>
+                  <li>Each annotated with UniProt canonical gene accession</li>
+                </ul>
+              </div>
+
+              <div className="ml-4 mb-3">
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">HLA (Non-classical — all alleles from IMGT):</p>
+                <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 space-y-1 text-sm">
+                  <li>HLA-E, HLA-F, HLA-G (non-classical Class I — NK cell recognition, immune tolerance)</li>
+                  <li>HLA-DRA, HLA-DRB3/4/5 (Class II DR family)</li>
+                  <li>HLA-DMA/DMB, HLA-DOA/DOB (Class II accessory — peptide loading)</li>
+                  <li>All alleles loaded from IMGT/HLA (no frequency filter for these loci)</li>
                 </ul>
               </div>
 
