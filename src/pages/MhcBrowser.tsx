@@ -45,7 +45,7 @@ export default function MhcBrowser() {
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
             <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs rounded-full">Class I</span>
-            Antigen Presentation to CD8+ T cells
+            Classical &amp; Non-classical
           </h3>
           <div className="grid md:grid-cols-3 gap-4">
             {classI.map(l => <LocusCard key={l.id} locus={l} />)}
@@ -58,7 +58,7 @@ export default function MhcBrowser() {
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
             <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs rounded-full">Class II</span>
-            Antigen Presentation to CD4+ T cells
+            DR, DQ, DP &amp; Accessory
           </h3>
           <div className="grid md:grid-cols-3 gap-4">
             {classII.map(l => <LocusCard key={l.id} locus={l} />)}
