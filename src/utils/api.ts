@@ -13,6 +13,9 @@ const CAT_MAP: Record<string, TileCategory> = {
   sla: 'sla',
   hla: 'hla',
   ho: 'human_ortholog',
+  ctrl: 'control',
+  peptide_control: 'control',
+  stop_codon_phage: 'control',
 };
 
 // Decode a compact tile array: [start, end, catCode, seq, ?matches]

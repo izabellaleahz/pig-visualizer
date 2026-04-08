@@ -44,10 +44,11 @@ export default function Statistics() {
       </div>
 
       {/* Key Numbers */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
         <StatCard label="Total Tiles" value={library_summary.total_sequences || 0} color="text-gray-900 dark:text-white" />
         <StatCard label="Pig Tiles" value={library_summary.total_pig_tiles || 0} color="text-pink-600" />
         <StatCard label="Human Tiles" value={library_summary.total_human_tiles || 0} color="text-cyan-600" />
+        <StatCard label="Controls" value={library_summary.controls?.total || 0} color="text-teal-600" />
         <StatCard label="Pig Genes" value={library_summary.pig_proteins || 0} color="text-gray-700 dark:text-gray-300" />
         <StatCard label="Excluded (100% ID)" value={library_summary.excluded_identical || 0} color="text-gray-400" />
       </div>
@@ -99,6 +100,29 @@ export default function Statistics() {
             </div>
           </div>
         </div>
+
+        {/* Controls section */}
+        {library_summary.controls && library_summary.controls.total > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Control Oligos</h3>
+            <div className="grid md:grid-cols-2 gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-teal-500" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Peptide controls (GFAP, MYC)</span>
+                </div>
+                <span className="text-sm font-medium">{library_summary.controls.peptide_controls}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-teal-300 dark:bg-teal-700" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Stop codon phages (empty)</span>
+                </div>
+                <span className="text-sm font-medium">{library_summary.controls.stop_codon_phages}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* MHC / SLA-HLA Section */}

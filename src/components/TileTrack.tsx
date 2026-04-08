@@ -25,6 +25,8 @@ function getTileColor(category: TileCategory): string {
       return 'fill-blue-500 hover:fill-blue-400';
     case 'human_ortholog':
       return 'fill-cyan-500 hover:fill-cyan-400';
+    case 'control':
+      return 'fill-teal-500 hover:fill-teal-400';
     default:
       return 'fill-gray-500 hover:fill-gray-400';
   }
@@ -120,6 +122,8 @@ export default function TileTrack({
         return 'HLA (human MHC)';
       case 'human_ortholog':
         return 'Human ortholog';
+      case 'control':
+        return 'Control';
       default:
         return 'Unknown';
     }
@@ -141,6 +145,8 @@ export default function TileTrack({
         return 'text-blue-300';
       case 'human_ortholog':
         return 'text-cyan-300';
+      case 'control':
+        return 'text-teal-300';
       default:
         return 'text-gray-300';
     }

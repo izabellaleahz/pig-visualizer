@@ -1,4 +1,4 @@
-export type TileCategory = 'unique' | 'unique_with_homolog' | 'divergent' | 'similar' | 'sla' | 'hla' | 'human_ortholog';
+export type TileCategory = 'unique' | 'unique_with_homolog' | 'divergent' | 'similar' | 'sla' | 'hla' | 'human_ortholog' | 'control';
 export type SpeciesId = 'pig' | 'human';
 
 export interface HumanMatch {
@@ -190,6 +190,12 @@ export interface LibraryStatistics {
     excluded_identical: number;
     pig_proteins: number;
     human_proteins: number;
+    controls?: {
+      peptide_controls: number;
+      stop_codon_phages: number;
+      total: number;
+      peptide_genes?: string[];
+    };
   };
   identity_stats?: {
     tiles_with_human_match?: number;

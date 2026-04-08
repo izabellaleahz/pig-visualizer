@@ -144,6 +144,7 @@ export default function SpeciesBrowser() {
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-600" /> Pig-only (no human ortholog)</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-purple-500" /> SLA (pig MHC)</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-cyan-500" /> Human ortholog</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-teal-500" /> Control</span>
       </div>
 
       {/* Filter toggles */}

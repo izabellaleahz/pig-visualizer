@@ -64,6 +64,7 @@ export default function ProteinDetail() {
       case 'sla': return 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300';
       case 'hla': return 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300';
       case 'human_ortholog': return 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300';
+      case 'control': return 'bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300';
       default: return 'bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300';
     }
   };
@@ -77,6 +78,7 @@ export default function ProteinDetail() {
       case 'sla': return 'SLA';
       case 'hla': return 'HLA';
       case 'human_ortholog': return 'Human';
+      case 'control': return 'Control';
       default: return 'Unknown';
     }
   };
