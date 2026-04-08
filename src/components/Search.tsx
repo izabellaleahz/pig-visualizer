@@ -4,7 +4,7 @@ import Fuse from 'fuse.js';
 import { useSearchIndex } from '../hooks/useData';
 
 interface SearchResult {
-  type: 'species' | 'protein';
+  type: 'species' | 'protein' | 'control';
   id: string;
   name: string;
   species?: string;
@@ -28,12 +28,22 @@ export default function Search() {
         id: s.id,
         name: s.name,
       })),
-      ...searchIndex.proteins.map(p => ({
-        type: 'protein' as const,
-        id: p.id,
-        name: p.name,
-        species: p.species,
-      })),
+      ...searchIndex.proteins
+        .filter(p => p.species !== 'control')
+        .map(p => ({
+          type: 'protein' as const,
+          id: p.id,
+          name: p.name,
+          species: p.species,
+        })),
+      ...searchIndex.proteins
+        .filter(p => p.species === 'control')
+        .map(p => ({
+          type: 'control' as const,
+          id: p.id,
+          name: p.name,
+          species: 'control',
+        })),
     ];
 
     return new Fuse(items, {
@@ -53,6 +63,8 @@ export default function Search() {
   const handleSelect = (result: SearchResult) => {
     if (result.type === 'species') {
       navigate(`/species/${result.id}`);
+    } else if (result.type === 'control') {
+      navigate('/controls');
     } else {
       navigate(`/protein/${result.id}`);
     }
@@ -114,10 +126,12 @@ export default function Search() {
                 className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                   result.type === 'species'
                     ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                    : result.type === 'control'
+                    ? 'bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300'
                     : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
                 }`}
               >
-                {result.type === 'species' ? 'Species' : 'Protein'}
+                {result.type === 'species' ? 'Species' : result.type === 'control' ? 'Control' : 'Protein'}
               </span>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
@@ -125,7 +139,7 @@ export default function Search() {
                 </div>
                 {result.species && (
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {result.species === 'pig' ? 'Pig' : 'Human'}
+                    {result.species === 'pig' ? 'Pig' : result.species === 'control' ? 'Control' : 'Human'}
                   </div>
                 )}
               </div>

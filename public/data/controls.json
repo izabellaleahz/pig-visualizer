@@ -1,0 +1,46 @@
+{
+  "peptide_controls": [
+    {
+      "id": "CONTROL_GFAP_F5",
+      "gene": "GFAP",
+      "type": "peptide_control",
+      "description": "Glial fibrillary acidic protein isoform 3 [Homo sapiens] fragment 5",
+      "sequence": "RELRLRLDQLTANSARLEVERDNLAQDLATVRQKLQDETNLRLEAENNL",
+      "length_aa": 49,
+      "oligo_length_bp": 195
+    },
+    {
+      "id": "CONTROL_GFAP_F11",
+      "gene": "GFAP",
+      "type": "peptide_control",
+      "description": "Glial fibrillary acidic protein isoform 3 [Homo sapiens] fragment 11",
+      "sequence": "TDAAARNAELLRQAKHEANDYRRQLQSLTCDLESLRGTNESLERQMREQ",
+      "length_aa": 49,
+      "oligo_length_bp": 195
+    },
+    {
+      "id": "CONTROL_MYC_F17",
+      "gene": "MYC",
+      "type": "peptide_control",
+      "description": "Myc proto-oncogene protein [Homo sapiens] fragment 17",
+      "sequence": "PKVVILKKATAYILSVQAEEQKLISEEDLLRKRREQLKHKLEQLRNSCA",
+      "length_aa": 49,
+      "oligo_length_bp": 195
+    }
+  ],
+  "stop_codon_phages": {
+    "count": 50,
+    "type": "stop_codon_phage",
+    "description": "Empty phage display controls with in-frame stop codon at position 1",
+    "stop_codons": ["TAA", "TAG", "TGA"],
+    "oligo_length_bp": 195,
+    "filler_length_bp": 144
+  },
+  "total": 53,
+  "oligo_geometry": {
+    "adapter_5prime": "TGGAGCCATCCGCAGTTCGAGAAA",
+    "adapter_3prime": "GACTACAAGGACGACGATGATAAG",
+    "coding_length_bp": 147,
+    "total_oligo_bp": 195
+  }
+}

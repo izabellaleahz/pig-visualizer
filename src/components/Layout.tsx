@@ -54,6 +54,16 @@ export default function Layout() {
                   MHC
                 </Link>
                 <Link
+                  to="/controls"
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    location.pathname === '/controls'
+                      ? 'bg-teal-100 text-teal-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Controls
+                </Link>
+                <Link
                   to="/stats"
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     location.pathname === '/stats'
