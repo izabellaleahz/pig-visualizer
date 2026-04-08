@@ -29,15 +29,15 @@ export default function Search() {
         name: s.name,
       })),
       ...searchIndex.proteins
-        .filter(p => p.species !== 'control')
+        .filter(p => (p.species as string) !== 'control')
         .map(p => ({
           type: 'protein' as const,
           id: p.id,
           name: p.name,
-          species: p.species,
+          species: p.species as string,
         })),
       ...searchIndex.proteins
-        .filter(p => p.species === 'control')
+        .filter(p => (p.species as string) === 'control')
         .map(p => ({
           type: 'control' as const,
           id: p.id,
