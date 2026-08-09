@@ -167,7 +167,7 @@ const memoryCache: Record<string, unknown> = {};
 
 // IndexedDB for persistent caching across sessions
 const DB_NAME = 'pig-visualizer-cache';
-const DB_VERSION = 4; // Bumped: RBH pipeline + full MHC data
+const DB_VERSION = 5; // Bumped: PERV tiles + 642K RBH+PERV library data
 const STORE_NAME = 'json-cache';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -183,9 +183,12 @@ function openDB(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'path' });
+      // On any DB_VERSION bump, drop and recreate the store so stale cached
+      // JSON (e.g. pre-PERV summaries/statistics) is discarded, not kept.
+      if (db.objectStoreNames.contains(STORE_NAME)) {
+        db.deleteObjectStore(STORE_NAME);
       }
+      db.createObjectStore(STORE_NAME, { keyPath: 'path' });
     };
   });
 
