@@ -8,7 +8,7 @@ import type { ProteinSummary } from '../types';
 
 type SortKey = 'name' | 'tileCount' | 'uniqueTiles' | 'divergentTiles' | 'similarTiles' | 'length';
 type SortOrder = 'asc' | 'desc';
-type FilterType = 'all' | 'unique' | 'divergent' | 'similar' | 'paired' | 'sla' | 'shared';
+type FilterType = 'all' | 'unique' | 'divergent' | 'similar' | 'paired' | 'sla' | 'perv' | 'shared';
 
 export default function SpeciesBrowser() {
   const { loading: speciesLoading, error: speciesError } = useSpecies();
@@ -47,6 +47,8 @@ export default function SpeciesBrowser() {
             return (p.similarTiles + p.divergentTiles) > 0;
           case 'sla':
             return (p.slaTiles ?? 0) > 0;
+          case 'perv':
+            return (p.pervTiles ?? 0) > 0;
           case 'shared':
             return (p.similarTiles + p.divergentTiles) > 0 && p.uniqueTiles > 0;
           default:
@@ -102,6 +104,7 @@ export default function SpeciesBrowser() {
   const divergentTiles = ls?.divergent_tiles ?? 0;
   const similarTiles = ls?.similar_tiles ?? 0;
   const slaTiles = ls?.sla_tiles ?? 0;
+  const pervTiles = ls?.perv_tiles ?? 0;
   const totalProteins = pigProteins?.length ?? 0;
   const pairedTiles = similarTiles + divergentTiles;
 
@@ -112,6 +115,7 @@ export default function SpeciesBrowser() {
     { key: 'divergent', label: 'Divergent (<80%)', count: divergentTiles, color: 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300' },
     { key: 'unique', label: 'Pig-only', count: uniqueTiles, color: 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' },
     { key: 'sla', label: 'SLA/MHC', count: slaTiles, color: 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300' },
+    { key: 'perv', label: 'PERV', count: pervTiles, color: 'bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300' },
   ];
 
   return (

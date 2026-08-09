@@ -13,6 +13,7 @@ const CAT_MAP: Record<string, TileCategory> = {
   sla: 'sla',
   hla: 'hla',
   ho: 'human_ortholog',
+  perv: 'perv',
   ctrl: 'control',
   peptide_control: 'control',
   stop_codon_phage: 'control',
@@ -61,6 +62,7 @@ interface CompactProtein {
   dt: number;
   st: number;
   sla: number;
+  pv?: number;
   cp: number;
   t: unknown[][];
   ic?: number;    // isoformCount (only present if > 1)
@@ -74,6 +76,7 @@ function decodeProtein(id: string, c: CompactProtein | Record<string, unknown>):
     return {
       ...legacy,
       id,
+      pervTiles: legacy.pervTiles ?? 0,
       isoformCount: legacy.isoformCount ?? 1,
       isoformIds: legacy.isoformIds ?? [],
       ncbiLink: legacy.ncbiLink || `https://www.ncbi.nlm.nih.gov/protein/${id}`,
@@ -94,6 +97,7 @@ function decodeProtein(id: string, c: CompactProtein | Record<string, unknown>):
     divergentTiles: compact.dt,
     similarTiles: compact.st,
     slaTiles: compact.sla,
+    pervTiles: compact.pv ?? 0,
     coveragePct: compact.cp,
     coverageStart: tiles.length > 0 ? tiles[0].start : 0,
     coverageEnd: tiles.length > 0 ? tiles[tiles.length - 1].end : 0,
@@ -116,6 +120,7 @@ interface CompactSummary {
   dt: number;
   st: number;
   sla: number;
+  pv?: number;
   cp: number;
   ic?: number; // isoformCount (only present if > 1)
 }
@@ -127,6 +132,7 @@ function decodeSummary(c: CompactSummary | Record<string, unknown>): ProteinSumm
     const legacy = c as unknown as ProteinSummary;
     return {
       ...legacy,
+      pervTiles: legacy.pervTiles ?? 0,
       uniqueWithHomologTiles: legacy.uniqueWithHomologTiles ?? 0,
       coverageStart: legacy.coverageStart ?? 0,
       coverageEnd: legacy.coverageEnd ?? 0,
@@ -147,6 +153,7 @@ function decodeSummary(c: CompactSummary | Record<string, unknown>): ProteinSumm
     divergentTiles: compact.dt,
     similarTiles: compact.st,
     slaTiles: compact.sla,
+    pervTiles: compact.pv ?? 0,
     coveragePct: compact.cp,
     coverageStart: 0,
     coverageEnd: 0,

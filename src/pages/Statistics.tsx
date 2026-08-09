@@ -32,6 +32,7 @@ export default function Statistics() {
     { label: 'Divergent (<80% to human)', color: 'bg-yellow-500', count: library_summary.divergent_tiles || 0 },
     { label: 'Pig-only (no ortholog)', color: 'bg-red-600', count: library_summary.unique_tiles || 0 },
     { label: 'SLA (pig MHC)', color: 'bg-purple-500', count: library_summary.sla_tiles || 0 },
+    { label: 'PERV (porcine retrovirus)', color: 'bg-pink-500', count: library_summary.perv_tiles || 0 },
   ].filter(c => c.count > 0);
 
   return (

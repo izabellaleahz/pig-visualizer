@@ -22,6 +22,8 @@ function getCategoryLabel(category: TileCategory): string {
       return 'HLA (human MHC allele)';
     case 'human_ortholog':
       return 'Human ortholog';
+    case 'perv':
+      return 'PERV (porcine endogenous retrovirus)';
     case 'control':
       return 'Control';
     default:
@@ -45,6 +47,8 @@ function getCategoryBadgeClass(category: TileCategory): string {
       return 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300';
     case 'human_ortholog':
       return 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300';
+    case 'perv':
+      return 'bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300';
     case 'control':
       return 'bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300';
     default:

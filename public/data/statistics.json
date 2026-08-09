@@ -1,28 +1,23 @@
 {
   "library_summary": {
-    "total_sequences": 642250,
-    "total_pig_tiles": 375682,
+    "total_sequences": 642461,
+    "total_pig_tiles": 375893,
     "total_human_tiles": 266515,
     "unique_tiles": 41522,
     "unique_with_homolog_tiles": 0,
     "divergent_tiles": 103671,
     "similar_tiles": 228074,
     "sla_tiles": 2415,
+    "perv_tiles": 211,
     "hla_tiles": 2899,
     "excluded_identical": 8888,
-    "pig_proteins": 19363,
-    "human_proteins": 266515,
-    "controls": {
-      "peptide_controls": 3,
-      "stop_codon_phages": 50,
-      "total": 53,
-      "peptide_genes": ["GFAP", "MYC"]
-    }
+    "pig_proteins": 19372,
+    "human_proteins": 266515
   },
   "identity_stats": {},
   "coverage": {
-    "proteins_with_full_coverage": 11814,
-    "proteins_with_partial_coverage": 7549,
+    "proteins_with_full_coverage": 11815,
+    "proteins_with_partial_coverage": 7557,
     "mean_coverage_pct": 90.2
   },
   "generation_info": {

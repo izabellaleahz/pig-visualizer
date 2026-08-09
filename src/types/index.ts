@@ -1,4 +1,4 @@
-export type TileCategory = 'unique' | 'unique_with_homolog' | 'divergent' | 'similar' | 'sla' | 'hla' | 'human_ortholog' | 'control';
+export type TileCategory = 'unique' | 'unique_with_homolog' | 'divergent' | 'similar' | 'sla' | 'hla' | 'human_ortholog' | 'perv' | 'control';
 export type SpeciesId = 'pig' | 'human';
 
 export interface HumanMatch {
@@ -33,6 +33,7 @@ export interface Protein {
   divergentTiles: number;
   similarTiles: number;
   slaTiles: number;
+  pervTiles: number;
   coveragePct: number;
   coverageStart: number;
   coverageEnd: number;
@@ -59,6 +60,7 @@ export interface Species {
   divergentTiles: number;
   similarTiles: number;
   slaTiles: number;
+  pervTiles?: number;
 }
 
 export interface SearchIndex {
@@ -185,6 +187,7 @@ export interface LibraryStatistics {
     divergent_tiles: number;
     similar_tiles: number;
     sla_tiles?: number;
+    perv_tiles?: number;
     human_ortholog_tiles?: number;
     hla_tiles?: number;
     excluded_identical: number;
